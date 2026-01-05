@@ -234,49 +234,6 @@ export const deliveryPartners = [
   },
 ];
 
-// Offers & Coupons
-export const offers = [
-  {
-    id: "OFFER-001",
-    code: "FRESH50",
-    description: "50% off on fresh vegetables",
-    discountType: "percentage",
-    discountValue: 50,
-    minOrderValue: 25,
-    maxUses: 500,
-    usedCount: 234,
-    validFrom: "2024-01-01",
-    validUntil: "2024-01-31",
-    status: "active",
-  },
-  {
-    id: "OFFER-002",
-    code: "WELCOME20",
-    description: "20% off for new customers",
-    discountType: "percentage",
-    discountValue: 20,
-    minOrderValue: 0,
-    maxUses: 1000,
-    usedCount: 567,
-    validFrom: "2024-01-01",
-    validUntil: "2024-12-31",
-    status: "active",
-  },
-  {
-    id: "OFFER-003",
-    code: "SAVE10",
-    description: "$10 off on orders above $50",
-    discountType: "fixed",
-    discountValue: 10,
-    minOrderValue: 50,
-    maxUses: 300,
-    usedCount: 145,
-    validFrom: "2024-01-10",
-    validUntil: "2024-01-25",
-    status: "inactive",
-  },
-];
-
 // System Alerts
 export const systemAlerts = [
   {

@@ -25,4 +25,17 @@ export const adminApi = {
         const response = await axiosInstance.delete(`/api/admin/deleteAdmin/${id}`);
         return response.data;
     },
+    // Custom Notifications
+    getAllNotifications: async (params?: any) => {
+        const response = await axiosInstance.get("/api/admin/notification/all", { params });
+        return response.data;
+    },
+    getNotificationById: async (id: string) => {
+        const response = await axiosInstance.get(`/api/admin/notification/${id}`);
+        return response.data;
+    },
+    sendNotification: async (data: { title: string; message: string; target: string }) => {
+        const response = await axiosInstance.post("/api/admin/notification/send", data);
+        return response.data;
+    },
 };

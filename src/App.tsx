@@ -17,8 +17,7 @@ import Orders from "./pages/Orders";
 import Products from "./pages/Products";
 import Customers from "./pages/Customers";
 import DeliveryPartners from "./pages/DeliveryPartners";
-import Offers from "./pages/Offers";
-import PushNotifications from "./pages/PushNotifications";
+import CustomNotifications from "./pages/CustomNotifications";
 import AdminManagement from "./pages/AdminManagement";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -88,21 +87,11 @@ const App = () => (
               }
             />
             <Route
-              path="/offers"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Offers />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/notifications"
               element={
                 <ProtectedRoute>
                   <MainLayout>
-                    <PushNotifications />
+                    <CustomNotifications />
                   </MainLayout>
                 </ProtectedRoute>
               }

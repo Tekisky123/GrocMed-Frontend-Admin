@@ -7,7 +7,6 @@ import {
   Users,
   Truck,
   Shield,
-  Zap,
   Bell,
   Settings,
 } from "lucide-react";
@@ -24,8 +23,7 @@ const navItems = [
   { label: "Products", icon: Package, href: "/products" },
   { label: "Customers", icon: Users, href: "/customers" },
   { label: "Delivery Partners", icon: Truck, href: "/delivery-partners" },
-  { label: "Offers & Coupons", icon: Zap, href: "/offers" },
-  { label: "Push Notifications", icon: Bell, href: "/notifications" },
+  { label: "Custom Notifications", icon: Bell, href: "/notifications" },
   { label: "Admin Management", icon: Shield, href: "/admin-management" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];

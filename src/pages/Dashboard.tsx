@@ -15,110 +15,180 @@ import {
   TrendingUp,
   Users,
   Truck,
-  ArrowUpRight,
+  Package,
+  Star,
+  Clock,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
-import { dashboardKPIs, revenueData, recentOrders, orderStatuses } from "@/lib/mockData";
-import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { dashboardApi } from "@/api/dashboardApi";
+import { toast } from "sonner";
+import { useState } from "react";
+import { Download } from "lucide-react";
 
 const Dashboard = () => {
-  const getStatusStyle = (status: string) => {
-    const statusInfo = orderStatuses.find(s => s.key === status);
-    return statusInfo ? statusInfo.badgeColor : "bg-gray-100";
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Fetch dashboard stats using React Query
+  const { data: dashboardData, isLoading, isError, error } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: dashboardApi.getDashboardStats,
+    refetchInterval: 60000, // Refetch every minute
+  });
+
+  const stats = dashboardData?.data;
+
+  // Handle report download
+  const handleDownloadReport = async () => {
+    try {
+      setIsDownloading(true);
+      toast.info('Generating report...', { duration: 2000 });
+
+      const blob = await dashboardApi.downloadSalesReport();
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Sales_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Report downloaded successfully!');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download report. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
-  const getStatusLabel = (status: string) => {
-    const statusInfo = orderStatuses.find(s => s.key === status);
-    return statusInfo ? statusInfo.label : status;
-  };
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="w-16 h-16 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-sm font-normal text-gray-500 uppercase tracking-widest">Loading Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Card className="p-8 max-w-md text-center border-none shadow-lg rounded-3xl">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h3 className="text-xl font-black text-gray-900 mb-2">Failed to Load Dashboard</h3>
+          <p className="text-sm text-gray-500 mb-4">
+            {error instanceof Error ? error.message : 'An error occurred while fetching dashboard data'}
+          </p>
+          <Button
+            onClick={() => window.location.reload()}
+            className="bg-gradient-to-r from-primary to-green-600 hover:from-primary/90 hover:to-green-600/90 text-white font-normal rounded-2xl"
+          >
+            Retry
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Platform Overview</h1>
-          <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Welcome back! Here's what's happening today.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Welcome back! Here's your business overview.</p>
         </div>
-        <Button className="bg-accent hover:bg-accent/90 text-white font-normal rounded-2xl h-11 px-6 shadow-lg shadow-accent/20 transition-all active:scale-95">
-          Download Report
+        <Button
+          onClick={handleDownloadReport}
+          disabled={isDownloading}
+          className="bg-gradient-to-r from-accent to-orange-500 hover:from-accent/90 hover:to-orange-500/90 text-white font-normal rounded-2xl h-11 px-6 shadow-lg shadow-accent/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isDownloading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4 mr-2" />
+              Download Report
+            </>
+          )}
         </Button>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards with Gradients */}
       <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {/* Total Orders */}
-        <Card className="p-5 sm:p-6 border-none shadow-sm hover:shadow-md transition-all rounded-3xl bg-white group ring-1 ring-gray-100">
+        <Card className="p-5 sm:p-6 border-none shadow-lg hover:shadow-xl transition-all rounded-3xl bg-gradient-to-br from-green-50 via-white to-green-50/30 group ring-1 ring-green-100">
           <div className="flex items-center justify-between mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-              <ShoppingCart className="w-6 h-6 text-primary" />
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-600 border border-green-100">
-              <span className="text-xs font-normal">+{dashboardKPIs.totalOrdersChange}%</span>
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-green-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-primary/30">
+              <ShoppingCart className="w-7 h-7 text-white" />
             </div>
           </div>
-          <p className="text-gray-400 text-xs font-normal uppercase tracking-widest mb-1">Total Orders</p>
-          <p className="text-2xl sm:text-3xl font-normal text-gray-900">{dashboardKPIs.totalOrders.toLocaleString()}</p>
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Total Orders</p>
+          <p className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-primary to-green-600 bg-clip-text text-transparent">{stats?.totalOrders.toLocaleString() || 0}</p>
         </Card>
 
         {/* Revenue */}
-        <Card className="p-5 sm:p-6 border-none shadow-sm hover:shadow-md transition-all rounded-3xl bg-white group ring-1 ring-gray-100">
+        <Card className="p-5 sm:p-6 border-none shadow-lg hover:shadow-xl transition-all rounded-3xl bg-gradient-to-br from-orange-50 via-white to-orange-50/30 group ring-1 ring-orange-100">
           <div className="flex items-center justify-between mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-              <TrendingUp className="w-6 h-6 text-accent" />
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-600 border border-green-100">
-              <span className="text-xs font-normal">+{dashboardKPIs.totalRevenueChange}%</span>
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-accent/30">
+              <TrendingUp className="w-7 h-7 text-white" />
             </div>
           </div>
-          <p className="text-gray-400 text-xs font-normal uppercase tracking-widest mb-1">Total Revenue</p>
-          <p className="text-2xl sm:text-3xl font-normal text-gray-900">
-            ₹{(dashboardKPIs.totalRevenue / 1000).toFixed(1)}k
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Total Revenue</p>
+          <p className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-accent to-orange-600 bg-clip-text text-transparent">
+            ₹{((stats?.totalRevenue || 0) / 1000).toFixed(1)}k
           </p>
         </Card>
 
         {/* Active Customers */}
-        <Card className="p-5 sm:p-6 border-none shadow-sm hover:shadow-md transition-all rounded-3xl bg-white group ring-1 ring-gray-100">
+        <Card className="p-5 sm:p-6 border-none shadow-lg hover:shadow-xl transition-all rounded-3xl bg-gradient-to-br from-blue-50 via-white to-blue-50/30 group ring-1 ring-blue-100">
           <div className="flex items-center justify-between mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-              <Users className="w-6 h-6 text-blue-500" />
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-600 border border-green-100">
-              <span className="text-xs font-normal">+{dashboardKPIs.activeCustomersChange}%</span>
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-blue-500/30">
+              <Users className="w-7 h-7 text-white" />
             </div>
           </div>
-          <p className="text-gray-400 text-xs font-normal uppercase tracking-widest mb-1">Customers</p>
-          <p className="text-2xl sm:text-3xl font-normal text-gray-900">{dashboardKPIs.activeCustomers.toLocaleString()}</p>
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Happy Customers</p>
+          <p className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">{stats?.totalCustomers.toLocaleString() || 0}</p>
         </Card>
 
         {/* Delivery Partners */}
-        <Card className="p-5 sm:p-6 border-none shadow-sm hover:shadow-md transition-all rounded-3xl bg-white group ring-1 ring-gray-100">
+        <Card className="p-5 sm:p-6 border-none shadow-lg hover:shadow-xl transition-all rounded-3xl bg-gradient-to-br from-indigo-50 via-white to-indigo-50/30 group ring-1 ring-indigo-100">
           <div className="flex items-center justify-between mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-              <Truck className="w-6 h-6 text-indigo-500" />
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-600 border border-green-100">
-              <span className="text-xs font-normal">+{dashboardKPIs.deliveryPartnersChange}%</span>
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg shadow-indigo-500/30">
+              <Truck className="w-7 h-7 text-white" />
             </div>
           </div>
-          <p className="text-gray-400 text-xs font-normal uppercase tracking-widest mb-1">Partners</p>
-          <p className="text-2xl sm:text-3xl font-normal text-gray-900">{dashboardKPIs.deliveryPartners.toLocaleString()}</p>
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-2">Delivery Team</p>
+          <p className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-indigo-500 to-indigo-600 bg-clip-text text-transparent">{stats?.totalDeliveryPartners.toLocaleString() || 0}</p>
         </Card>
       </div>
 
-      {/* Charts Section */}
+      {/* Charts and Quick Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Chart */}
-        <Card className="lg:col-span-2 p-5 sm:p-8 border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100">
+        <Card className="lg:col-span-2 p-6 sm:p-8 border-none shadow-lg rounded-3xl bg-gradient-to-br from-white via-primary/5 to-white ring-1 ring-gray-100">
           <div className="mb-8">
-            <h3 className="text-lg font-black text-gray-900 tracking-tight">Growth Analytics</h3>
-            <p className="text-sm text-gray-400 font-normal mt-1">Daily revenue and order performance</p>
+            <h3 className="text-xl font-black bg-gradient-to-r from-primary to-green-600 bg-clip-text text-transparent">Sales Performance</h3>
+            <p className="text-sm text-gray-500 font-normal mt-1">Your daily revenue trends (Last 7 days)</p>
           </div>
           <div className="h-[300px] sm:h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData}>
+              <AreaChart data={stats?.salesPerformance || []}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                   </linearGradient>
                 </defs>
@@ -129,6 +199,10 @@ const Dashboard = () => {
                   tickLine={false}
                   tick={{ fill: '#9ca3af', fontSize: 12, fontWeight: 700 }}
                   dy={10}
+                  tickFormatter={(value) => {
+                    const date = new Date(value);
+                    return `${date.getMonth() + 1}/${date.getDate()}`;
+                  }}
                 />
                 <YAxis
                   axisLine={false}
@@ -145,6 +219,10 @@ const Dashboard = () => {
                     padding: "12px",
                   }}
                   itemStyle={{ fontWeight: 800, fontSize: "14px" }}
+                  labelFormatter={(value) => {
+                    const date = new Date(value);
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                  }}
                 />
                 <Area
                   type="monotone"
@@ -160,50 +238,7 @@ const Dashboard = () => {
           </div>
         </Card>
 
-        {/* Recent Orders - Restored */}
-        <Card className="lg:col-span-2 p-5 sm:p-8 border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100 overflow-hidden">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="w-5 h-5 text-primary" />
-              <h3 className="text-lg font-black text-gray-900 tracking-tight">Recent Activity</h3>
-            </div>
-            <Link to="/orders" className="text-[10px] font-normal text-primary hover:underline uppercase tracking-widest">
-              View All Orders
-            </Link>
-          </div>
-          <div className="overflow-x-auto -mx-5 sm:-mx-8">
-            <table className="w-full min-w-[600px]">
-              <thead>
-                <tr className="bg-gray-50/50 border-b border-gray-50">
-                  <th className="px-5 py-4 text-left text-[10px] font-normal text-gray-400 uppercase tracking-widest">Order ID</th>
-                  <th className="px-5 py-4 text-left text-[10px] font-normal text-gray-400 uppercase tracking-widest">Customer</th>
-                  <th className="px-5 py-4 text-left text-[10px] font-normal text-gray-400 uppercase tracking-widest">Amount</th>
-                  <th className="px-5 py-4 text-left text-[10px] font-normal text-gray-400 uppercase tracking-widest">Status</th>
-                  <th className="px-5 py-4 text-right text-[10px] font-normal text-gray-400 uppercase tracking-widest">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {recentOrders.map((order) => (
-                  <tr key={order.id} className="group hover:bg-gray-50/50 transition-all">
-                    <td className="px-5 py-4 text-sm font-normal text-gray-600">{order.id}</td>
-                    <td className="px-5 py-4 text-sm font-normal text-gray-900">{order.customerName}</td>
-                    <td className="px-5 py-4 text-sm font-normal text-gray-900">₹{order.totalAmount.toLocaleString()}</td>
-                    <td className="px-5 py-4">
-                      <Badge variant="outline" className={`${getStatusStyle(order.status)} text-[10px] font-normal px-2.5 py-0.5 rounded-lg border-none`}>
-                        {getStatusLabel(order.status)}
-                      </Badge>
-                    </td>
-                    <td className="px-5 py-4 text-right">
-                      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-xl group-hover:bg-primary group-hover:text-white transition-all">
-                        <ArrowUpRight className="w-4 h-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+
       </div>
     </div>
   );

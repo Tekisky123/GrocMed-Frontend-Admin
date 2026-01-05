@@ -237,6 +237,12 @@ const Products = () => {
     formData.set('brand', normalizedBrand);
     formData.set('unitType', formUnitType);
 
+    // Broadcast Flag
+    const notifyCheckbox = document.getElementById("notifyCustomers") as HTMLInputElement;
+    if (notifyCheckbox && notifyCheckbox.checked && !editingProduct) {
+      formData.append("notifyCustomers", "true");
+    }
+
     // Add boolean values for checkboxes
     const notifyCustomers = (e.currentTarget.elements.namedItem('notifyCustomers') as HTMLInputElement)?.checked || false;
     const isOffer = (e.currentTarget.elements.namedItem('isOffer') as HTMLInputElement)?.checked || false;
@@ -407,12 +413,12 @@ const Products = () => {
                   <tr>
                     <td colSpan={5} className="py-24 text-center">
                       <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-                      <p className="text-sm font-normal text-primary mt-6 tracking-widest uppercase">Syncing Inventory Assets...</p>
+                      <p className="text-sm font-normal text-primary mt-6 tracking-widest uppercase">Loading Products...</p>
                     </td>
                   </tr>
                 ) : paginatedProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-20 text-center text-gray-400 font-normal uppercase text-xs tracking-widest">No matching SKU found</td>
+                    <td colSpan={5} className="py-20 text-center text-gray-400 font-normal uppercase text-xs tracking-widest">No products found</td>
                   </tr>
                 ) : (
                   paginatedProducts.map((product: any) => (
@@ -703,7 +709,7 @@ const Products = () => {
                     <Calendar className="w-4 h-4 text-blue-500" />
                     <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Dates & Limits</h3>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <div className="space-y-1">
                       <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1 text-blue-600">MFG Date</Label>
                       <div className="relative">
@@ -721,6 +727,21 @@ const Products = () => {
                         />
                         {formErrors.expiryDate && <p className="text-[10px] text-red-500 font-normal mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{formErrors.expiryDate}</p>}
                       </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1 text-primary">Min Order Qty</Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          name="minimumQuantity"
+                          min="1"
+                          defaultValue={selectedProduct?.minimumQuantity || 1}
+                          className={`h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white font-normal pl-4 transition-all ${formErrors.minimumQuantity ? "border-red-500 ring-1 ring-red-500 bg-red-50/20" : ""}`}
+                          placeholder="1"
+                        />
+                        {formErrors.minimumQuantity && <p className="text-[10px] text-red-500 font-normal mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{formErrors.minimumQuantity}</p>}
+                      </div>
+                      <p className="text-[9px] text-gray-400 font-normal mt-1 ml-1">Minimum units per order</p>
                     </div>
                   </div>
                 </div>
@@ -816,6 +837,23 @@ const Products = () => {
                       <Label htmlFor="isActive" className="text-sm font-normal text-gray-900 cursor-pointer block">Public Availability</Label>
                       <p className="text-[10px] text-gray-400 font-normal uppercase tracking-widest mt-0.5">Toggle to show or hide from customer catalogue.</p>
                     </div>
+                    <div className="space-y-2">
+                      <Label>Visibility</Label>
+                      <div className="flex items-center space-x-2 border p-3 rounded-md">
+                        <input
+                          type="checkbox"
+                          id="notifyCustomers"
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          defaultChecked={true} // Default to true for engagement? Or false for safety.
+                        />
+                        <Label htmlFor="notifyCustomers" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                          Broadcast to Customers
+                        </Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        If checked, a push notification will be sent to all customers announcing this product.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -848,13 +886,13 @@ const Products = () => {
         isOpen={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
         onConfirm={performDelete}
-        title={confirmDelete?.type === "product" ? "Decommission SKU?" : "Prune Asset?"}
+        title={confirmDelete?.type === "product" ? "Delete Product?" : "Remove Image?"}
         description={
           confirmDelete?.type === "product"
-            ? "This will permanently purge this product identity and all associated logistics data from the secure database. This operation is irreversible."
-            : "This will remove the selected visual asset from the product gallery. Continue?"
+            ? "This will permanently delete this product and all its details. This action cannot be undone."
+            : "This will remove this image from the product gallery. Continue?"
         }
-        confirmText="Confirm Purge"
+        confirmText="Delete"
         variant="destructive"
         isLoading={deleteMutation.isPending || deleteImageMutation.isPending}
       />

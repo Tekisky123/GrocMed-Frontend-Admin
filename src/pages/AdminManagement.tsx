@@ -135,8 +135,8 @@ const AdminManagement = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Admins</h1>
-          <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Manage system access and staff roles.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Admin Users</h1>
+          <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Manage admin accounts and permissions.</p>
         </div>
         <Button
           onClick={() => {

@@ -1,14 +1,24 @@
 import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Search,
   Phone,
@@ -19,25 +29,31 @@ import {
   ChevronRight,
   ShieldCheck,
   Zap,
+  Loader2,
+  UserPlus,
+  MapPin,
 } from "lucide-react";
-import { deliveryPartners } from "@/lib/mockData";
+import { deliveryPartnerApi } from "@/api/deliveryPartnerApi";
+import { toast } from "sonner";
 
 const DeliveryPartners = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [selectedPartner, setSelectedPartner] = useState<any>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingPartner, setEditingPartner] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const itemsPerPage = 10;
+  const queryClient = useQueryClient();
 
-  const allPartners = useMemo(() => [
-    ...deliveryPartners,
-    ...deliveryPartners.map((p, i) => ({
-      ...p,
-      id: `DP-${String(100 + i).slice(-3)}`,
-      name: `Partner ${i + 5}`,
-      email: `partner${i + 5}@delivery.com`,
-    })),
-  ], []);
+  // Fetch delivery partners with React Query
+  const { data: partnersResponse, isLoading } = useQuery({
+    queryKey: ['deliveryPartners'],
+    queryFn: deliveryPartnerApi.getAllPartners,
+  });
+
+  const allPartners = partnersResponse?.data || [];
 
   const filteredPartners = useMemo(() => {
     return allPartners.filter((partner) => {
@@ -57,15 +73,103 @@ const DeliveryPartners = () => {
 
   const totalPages = Math.ceil(filteredPartners.length / itemsPerPage);
 
+  // Create Partner Mutation
+  const createMutation = useMutation({
+    mutationFn: deliveryPartnerApi.createPartner,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveryPartners'] });
+      toast.success("Partner added successfully!");
+      setShowAddModal(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to add partner");
+    },
+  });
+
+  // Update Partner Mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      deliveryPartnerApi.updatePartner(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveryPartners'] });
+      toast.success("Partner updated successfully!");
+      setShowAddModal(false);
+      setEditingPartner(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to update partner");
+    },
+  });
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    const errors: Record<string, string> = {};
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const phone = formData.get('phone') as string;
+    const password = formData.get('password') as string;
+    const vehicleType = formData.get('vehicleType') as string;
+    const vehicleNumber = formData.get('vehicleNumber') as string;
+    const licenseNumber = formData.get('licenseNumber') as string;
+
+    if (!name?.trim()) errors.name = "Name is required";
+    if (!email?.trim()) errors.email = "Email is required";
+    if (!phone?.trim()) errors.phone = "Phone is required";
+    if (!editingPartner && !password?.trim()) errors.password = "Password is required";
+    if (!vehicleType?.trim()) errors.vehicleType = "Vehicle type is required";
+    if (!vehicleNumber?.trim()) errors.vehicleNumber = "Vehicle number is required";
+    if (!licenseNumber?.trim()) errors.licenseNumber = "License number is required";
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    setFormErrors({});
+
+    const partnerData: any = {
+      name,
+      email,
+      phone,
+      vehicleType,
+      vehicleNumber,
+      licenseNumber,
+    };
+
+    // Only include password for new partners
+    if (!editingPartner && password) {
+      partnerData.password = password;
+    }
+
+    if (editingPartner) {
+      updateMutation.mutate({ id: editingPartner._id, data: partnerData });
+    } else {
+      createMutation.mutate(partnerData);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setEditingPartner(null);
+    setFormErrors({});
+  };
+
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Delivery Partners</h1>
-          <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Manage your delivery fleet and status.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Delivery Team</h1>
+          <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Manage your delivery partners.</p>
         </div>
-        <Button className="bg-accent hover:bg-accent/90 text-white font-normal rounded-2xl h-11 px-6 shadow-lg shadow-accent/20 transition-all active:scale-95">
+        <Button
+          onClick={() => setShowAddModal(true)}
+          className="bg-gradient-to-r from-accent to-orange-500 hover:from-accent/90 hover:to-orange-500/90 text-white font-normal rounded-2xl h-11 px-6 shadow-lg shadow-accent/30 transition-all active:scale-95"
+        >
+          <UserPlus className="w-5 h-5 mr-2" />
           Add Partner
         </Button>
       </div>
@@ -120,64 +224,104 @@ const DeliveryPartners = () => {
           <table className="w-full min-w-[800px]">
             <thead>
               <tr className="bg-gray-50/50 border-b border-gray-50">
-                <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Partner Name</th>
-                <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Vehicle</th>
-                <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Today's Performance</th>
+                <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Partner</th>
+                <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Contact</th>
+                <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Vehicle Details</th>
+                <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">License</th>
                 <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Status</th>
                 <th className="px-6 py-5 text-right text-[11px] font-normal text-gray-400 uppercase tracking-widest">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {paginatedPartners.map((partner) => (
-                <tr key={partner.id} className="group hover:bg-gray-50/30 transition-colors">
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-normal text-primary text-xs overflow-hidden border border-gray-50">
-                        {partner.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-normal text-gray-900">{partner.name}</p>
-                        <p className="text-[11px] text-gray-400 font-normal uppercase tracking-widest">{partner.id}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-2">
-                      <Truck className="w-3.5 h-3.5 text-gray-400" />
-                      <span className="text-xs font-normal text-gray-700">{partner.vehicle}</span>
-                    </div>
-                    <p className="text-[10px] text-gray-400 font-normal mt-0.5">Commercial Grade</p>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5 fill-accent text-accent" />
-                        <span className="text-xs font-normal">{partner.rating}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 opacity-60">
-                        <Package className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="text-xs font-normal">{partner.completedDeliveries}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <Badge className={`px-2.5 py-1 rounded-lg font-normal text-[10px] uppercase tracking-wider ${partner.status === 'active' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-gray-50 text-gray-700 border-gray-100'}`}>
-                      {partner.status}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-5 text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedPartner(partner)}
-                      className="h-9 px-4 rounded-xl font-normal text-xs uppercase text-accent hover:bg-accent/5 transition-all"
-                    >
-                      Audit
-                      <ChevronRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
-                    </Button>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="py-24 text-center">
+                    <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
+                    <p className="text-sm font-normal text-primary mt-6 tracking-widest uppercase">Loading Partners...</p>
                   </td>
                 </tr>
-              ))}
+              ) : paginatedPartners.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-20 text-center text-gray-400 font-normal uppercase text-xs tracking-widest">No delivery partners found</td>
+                </tr>
+              ) : (
+                paginatedPartners.map((partner) => (
+                  <tr key={partner._id} className="group hover:bg-gray-50/30 transition-colors">
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center font-bold text-primary text-sm border border-primary/10">
+                          {partner.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{partner.name}</p>
+                          <p className="text-[10px] text-gray-400 font-normal mt-0.5">
+                            {partner.isActive ? (
+                              <span className="text-green-600">● Active</span>
+                            ) : (
+                              <span className="text-gray-400">○ Inactive</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-3.5 h-3.5 text-gray-400" />
+                          <span className="text-xs font-normal text-gray-700">{partner.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3.5 h-3.5 text-gray-400" />
+                          <span className="text-xs font-normal text-gray-700">{partner.phone}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <div className="px-2 py-0.5 rounded bg-indigo-50 border border-indigo-100">
+                            <span className="text-[10px] font-bold text-indigo-600 uppercase">{partner.vehicleType}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Truck className="w-3.5 h-3.5 text-gray-400" />
+                          <span className="text-xs font-semibold text-gray-900">{partner.vehicleNumber}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <p className="text-xs font-mono font-semibold text-gray-900">{partner.licenseNumber}</p>
+                      <p className="text-[10px] text-gray-400 font-normal mt-0.5">DL Number</p>
+                    </td>
+                    <td className="px-6 py-5">
+                      <Badge
+                        className={`px-3 py-1.5 rounded-lg font-semibold text-[10px] uppercase tracking-wider border ${partner.status === 'Available'
+                          ? 'bg-green-50 text-green-700 border-green-200'
+                          : partner.status === 'Busy'
+                            ? 'bg-orange-50 text-orange-700 border-orange-200'
+                            : 'bg-gray-50 text-gray-600 border-gray-200'
+                          }`}
+                      >
+                        {partner.status === 'Available' && '✅ '}
+                        {partner.status === 'Busy' && '🔴 '}
+                        {partner.status === 'Offline' && '⚫ '}
+                        {partner.status}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-5 text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedPartner(partner)}
+                        className="h-9 px-4 rounded-xl font-normal text-xs uppercase text-accent hover:bg-accent/5 transition-all"
+                      >
+                        View Details
+                        <ChevronRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -277,6 +421,181 @@ const DeliveryPartners = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Add/Edit Partner Modal */}
+      <Dialog open={showAddModal} onOpenChange={handleCloseModal}>
+        <DialogContent className="max-w-2xl rounded-[32px] p-0 border-none shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className=" bg-gradient-to-br from-white via-accent/5 to-white px-8 pt-8 pb-4 rounded-t-[32px]">
+            <DialogHeader>
+              <DialogTitle className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-accent to-orange-600 bg-clip-text text-transparent">
+                {editingPartner ? "Edit Partner" : "Add New Partner"}
+              </DialogTitle>
+              <p className="text-sm text-gray-500 font-normal mt-1">
+                {editingPartner ? "Update delivery partner information" : "Register a new delivery partner to your fleet"}
+              </p>
+            </DialogHeader>
+          </div>
+
+          <form onSubmit={handleSubmit} className="px-8 pb-8">
+            <div className="space-y-6">
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 px-1">
+                  <UserPlus className="w-4 h-4 text-accent" />
+                  <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Personal Details</h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">
+                      Full Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      name="name"
+                      defaultValue={editingPartner?.name}
+                      className={`h-12 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white ${formErrors.name ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                      placeholder="Enter partner name"
+                    />
+                    {formErrors.name && <p className="text-[10px] text-red-500 ml-1">{formErrors.name}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">
+                      Email Address <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        name="email"
+                        type="email"
+                        defaultValue={editingPartner?.email}
+                        className={`h-12 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white pl-10 ${formErrors.email ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                        placeholder="partner@example.com"
+                      />
+                    </div>
+                    {formErrors.email && <p className="text-[10px] text-red-500 ml-1">{formErrors.email}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">
+                      Phone Number <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        name="phone"
+                        defaultValue={editingPartner?.phone}
+                        className={`h-12 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white pl-10 ${formErrors.phone ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                        placeholder="+91 9876543210"
+                      />
+                    </div>
+                    {formErrors.phone && <p className="text-[10px] text-red-500 ml-1">{formErrors.phone}</p>}
+                  </div>
+
+                  {!editingPartner && (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">
+                        Password <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        name="password"
+                        type="password"
+                        className={`h-12 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white ${formErrors.password ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                        placeholder="Enter password"
+                      />
+                      {formErrors.password && <p className="text-[10px] text-red-500 ml-1">{formErrors.password}</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Vehicle Information */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 px-1">
+                  <Truck className="w-4 h-4 text-indigo-500" />
+                  <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Vehicle & License Details</h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">
+                      Vehicle Type <span className="text-red-500">*</span>
+                    </Label>
+                    <Select name="vehicleType" defaultValue={editingPartner?.vehicleType || "Bike"}>
+                      <SelectTrigger className={`h-12 rounded-2xl border-gray-100 bg-gray-50/50 ${formErrors.vehicleType ? 'border-red-500 ring-1 ring-red-500' : ''}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Bike">🏍️ Bike</SelectItem>
+                        <SelectItem value="Scooter">🛵 Scooter</SelectItem>
+                        <SelectItem value="Car">🚗 Car</SelectItem>
+                        <SelectItem value="Van">🚐 Van</SelectItem>
+                        <SelectItem value="Truck">🚚 Truck</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {formErrors.vehicleType && <p className="text-[10px] text-red-500 ml-1">{formErrors.vehicleType}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">
+                      Vehicle Number <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Truck className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        name="vehicleNumber"
+                        defaultValue={editingPartner?.vehicleNumber}
+                        className={`h-12 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white pl-10 uppercase ${formErrors.vehicleNumber ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                        placeholder="MH-12-AB-1234"
+                      />
+                    </div>
+                    {formErrors.vehicleNumber && <p className="text-[10px] text-red-500 ml-1">{formErrors.vehicleNumber}</p>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">
+                      License Number <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      name="licenseNumber"
+                      defaultValue={editingPartner?.licenseNumber}
+                      className={`h-12 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white uppercase ${formErrors.licenseNumber ? 'border-red-500 ring-1 ring-red-500' : ''}`}
+                      placeholder="DL-1420110012345"
+                    />
+                    {formErrors.licenseNumber && <p className="text-[10px] text-red-500 ml-1">{formErrors.licenseNumber}</p>}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="flex flex-col sm:flex-row gap-3 mt-8 pt-6 border-t border-gray-100">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCloseModal}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="h-14 flex-1 rounded-2xl border-gray-100 font-normal uppercase text-xs tracking-widest text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="h-14 flex-1 rounded-2xl bg-gradient-to-r from-accent to-orange-500 hover:from-accent/90 hover:to-orange-500/90 text-white font-normal uppercase text-xs tracking-widest shadow-lg shadow-accent/30 transition-all active:scale-95"
+              >
+                {createMutation.isPending || updateMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {editingPartner ? "Updating..." : "Adding..."}
+                  </>
+                ) : (
+                  <>{editingPartner ? "Update Partner" : "Add Partner"}</>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

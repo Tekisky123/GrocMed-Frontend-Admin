@@ -86,7 +86,7 @@ const Login = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-slate-700 font-semibold pl-1">
-                    Username or Email
+                    Email
                   </Label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-primary transition-colors">

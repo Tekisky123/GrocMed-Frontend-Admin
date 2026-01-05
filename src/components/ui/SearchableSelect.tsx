@@ -84,7 +84,7 @@ export function SearchableSelect({
                                         onChange(currentValue === value ? "" : currentValue);
                                         setOpen(false);
                                     }}
-                                    className="py-3 px-4 aria-selected:bg-primary/5 aria-selected:text-primary cursor-pointer font-bold text-sm"
+                                    className="py-3 px-4 aria-selected:bg-accent/10 aria-selected:text-accent hover:bg-accent/10 hover:text-accent cursor-pointer font-bold text-sm transition-colors"
                                 >
                                     <Check
                                         className={cn(
