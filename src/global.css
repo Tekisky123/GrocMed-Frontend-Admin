@@ -6,6 +6,7 @@
 @tailwind utilities;
 
 @layer base {
+
   /**
    * Tailwind CSS theme - GrocMed branding
    * tailwind.config.ts expects the following color variables to be expressed as HSL values.
@@ -113,5 +114,81 @@
   code {
     overflow-x: auto;
     white-space: pre;
+  }
+}
+
+@layer components {
+
+  /* Responsive table – min-width: max-content forces the table to keep its
+     natural column widths, so overflow-x-auto on the wrapper creates a
+     horizontal scrollbar rather than squishing columns. */
+  .rtable {
+    width: 100%;
+    min-width: max-content;
+    border-collapse: collapse;
+  }
+
+  .rtable th {
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  .rtable td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  @media (min-width: 640px) {
+    .rtable th {
+      padding: 12px 16px;
+      font-size: 11px;
+    }
+
+    .rtable td {
+      padding: 12px 16px;
+      font-size: 13px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .rtable th {
+      padding: 14px 20px;
+    }
+
+    .rtable td {
+      padding: 14px 20px;
+      font-size: 14px;
+    }
+  }
+
+  /* Scrollable table wrapper – use this on the div wrapping .rtable */
+  .rtable-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Custom scrollbar for sidebar nav */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 99px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #d1d5db;
   }
 }

@@ -10,7 +10,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
 
-// Pages
+// Core Pages
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
@@ -22,7 +22,26 @@ import AdminManagement from "./pages/AdminManagement";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
+// Accounting & Finance Pages
+import Finance from "./pages/Finance";
+import Purchases from "./pages/Purchases";
+import SalesRegister from "./pages/SalesRegister";
+import Inventory from "./pages/Inventory";
+import GSTModule from "./pages/GSTModule";
+import Payroll from "./pages/Payroll";
+import FixedAssets from "./pages/FixedAssets";
+import StatutoryRegisters from "./pages/StatutoryRegisters";
+import Reports from "./pages/Reports";
+
 const queryClient = new QueryClient();
+
+const makeProtected = (Component: React.ComponentType) => (
+  <ProtectedRoute>
+    <MainLayout>
+      <Component />
+    </MainLayout>
+  </ProtectedRoute>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -34,88 +53,26 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
 
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Dashboard />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
+            {/* Core routes */}
+            <Route path="/" element={makeProtected(Dashboard)} />
+            <Route path="/orders" element={makeProtected(Orders)} />
+            <Route path="/products" element={makeProtected(Products)} />
+            <Route path="/customers" element={makeProtected(Customers)} />
+            <Route path="/delivery-partners" element={makeProtected(DeliveryPartners)} />
+            <Route path="/notifications" element={makeProtected(CustomNotifications)} />
+            <Route path="/admin-management" element={makeProtected(AdminManagement)} />
+            <Route path="/settings" element={makeProtected(Settings)} />
 
-            {/* Placeholder routes for other pages */}
-            <Route
-              path="/orders"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Orders />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/products"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Products />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/customers"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Customers />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/delivery-partners"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <DeliveryPartners />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/notifications"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <CustomNotifications />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin-management"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <AdminManagement />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Settings />
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            />
+            {/* Accounting & Finance routes */}
+            <Route path="/finance" element={makeProtected(Finance)} />
+            <Route path="/purchases" element={makeProtected(Purchases)} />
+            <Route path="/sales-register" element={makeProtected(SalesRegister)} />
+            <Route path="/inventory" element={makeProtected(Inventory)} />
+            <Route path="/gst" element={makeProtected(GSTModule)} />
+            <Route path="/payroll" element={makeProtected(Payroll)} />
+            <Route path="/assets" element={makeProtected(FixedAssets)} />
+            <Route path="/statutory" element={makeProtected(StatutoryRegisters)} />
+            <Route path="/reports" element={makeProtected(Reports)} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
