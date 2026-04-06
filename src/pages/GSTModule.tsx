@@ -31,16 +31,48 @@ const GSTModule = () => {
 
             // Map E-Commerce Orders to B2C GST Sales
             const mappedSales = (ordersRes?.orders || ordersRes?.data || []).map((o: any) => {
+                let totalTaxable = 0;
+                let totalCgst = 0;
+                let totalSgst = 0;
+                let totalIgst = 0;
+                
+                if (o.cgstAmount !== undefined || o.igstAmount !== undefined) {
+                    // System successfully pulled Explicit Snapshots deployed in Update v3
+                    totalCgst = o.cgstAmount || 0;
+                    totalSgst = o.sgstAmount || 0;
+                    totalIgst = o.igstAmount || 0;
+                    totalTaxable = (o.totalAmount || 0) - (o.taxAmount || 0);
+                } else if (o.items && o.items.length > 0) {
+                    // Fallback to manual loop mapping for legacy orders lacking Explicit Snapshots
+                    o.items.forEach((item: any) => {
+                        const gstRate = item.gstRate !== undefined ? item.gstRate : 18; 
+                        const itemTotal = item.price * item.quantity;
+                        const itemTaxable = itemTotal / (1 + (gstRate / 100));
+                        const itemTax = itemTotal - itemTaxable;
+                        totalTaxable += itemTaxable;
+                        totalCgst += itemTax / 2;
+                        totalSgst += itemTax / 2;
+                    });
+                } else {
+                    const total = o.totalAmount || 0;
+                    totalTaxable = total / 1.18;
+                    const tax = total - totalTaxable;
+                    totalCgst = tax / 2;
+                    totalSgst = tax / 2;
+                }
+
                 const total = o.totalAmount || 0;
-                const taxable = Number((total / 1.18).toFixed(2));
-                const cgst = Number((taxable * 0.09).toFixed(2));
-                const sgst = Number((taxable * 0.09).toFixed(2));
+
                 return {
                     inv: o._id.substring(0, 8).toUpperCase(),
                     date: new Date(o.createdAt).toLocaleDateString(),
                     customer: o.customer?.name || "Walk-in Customer",
                     type: "B2C",
-                    taxable, cgst, sgst, igst: 0, total
+                    taxable: Number(totalTaxable.toFixed(2)), 
+                    cgst: Number(totalCgst.toFixed(2)), 
+                    sgst: Number(totalSgst.toFixed(2)), 
+                    igst: Number(totalIgst.toFixed(2)), 
+                    total
                 };
             });
 

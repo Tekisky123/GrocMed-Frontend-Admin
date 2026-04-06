@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { Search, Plus, Edit2, Loader2, Trash2, ImagePlus, X, Package, Crop, Calendar, Box, Weight, ShoppingBag, TrendingUp } from "lucide-react";
+import { Search, Plus, Edit2, Loader2, Trash2, ImagePlus, X, Package, Crop, Calendar, Box, Weight, ShoppingBag, TrendingUp, Calculator } from "lucide-react";
 import { productApi } from "@/api/productApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -83,6 +83,7 @@ const Products = () => {
   const [formCategory, setFormCategory] = useState("");
   const [formBrand, setFormBrand] = useState("");
   const [formUnitType, setFormUnitType] = useState("Single Item");
+  const [formGstRate, setFormGstRate] = useState("0");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const itemsPerPage = 8;
@@ -101,10 +102,12 @@ const Products = () => {
       setFormCategory(selectedProduct.category || "");
       setFormBrand(selectedProduct.brand || "");
       setFormUnitType(selectedProduct.unitType || "Piece");
+      setFormGstRate(selectedProduct.gstRate?.toString() || "0");
     } else if (showAddModal) {
       setFormCategory("");
       setFormBrand("");
       setFormUnitType("Piece");
+      setFormGstRate("0");
     }
   }, [editingProduct, showAddModal, selectedProduct]);
 
@@ -178,6 +181,7 @@ const Products = () => {
     setFormCategory("");
     setFormBrand("");
     setFormUnitType("Single Item");
+    setFormGstRate("0");
     setFormErrors({});
   };
 
@@ -236,6 +240,7 @@ const Products = () => {
     formData.set('category', formCategory);
     formData.set('brand', normalizedBrand);
     formData.set('unitType', formUnitType);
+    formData.set('gstRate', formGstRate);
 
     // Broadcast Flag
     const notifyCheckbox = document.getElementById("notifyCustomers") as HTMLInputElement;
@@ -701,6 +706,40 @@ const Products = () => {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Accounting & Taxation */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 px-1">
+                    <Calculator className="w-4 h-4 text-indigo-500" />
+                    <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Accounting & Taxation</h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">HSN/SAC Code</Label>
+                      <Input 
+                        name="hsnCode" 
+                        defaultValue={selectedProduct?.hsnCode} 
+                        className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white text-sm font-normal" 
+                        placeholder="e.g. 1905" 
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">GST Bracket (%)</Label>
+                      <Select value={formGstRate} onValueChange={setFormGstRate}>
+                        <SelectTrigger className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white font-normal">
+                          <SelectValue placeholder="Select GST Bracket" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl border-gray-100 pb-2">
+                          <SelectItem value="0" className="font-normal text-xs tracking-widest">0% (Nil Rated)</SelectItem>
+                          <SelectItem value="5" className="font-normal text-xs tracking-widest">5%</SelectItem>
+                          <SelectItem value="12" className="font-normal text-xs tracking-widest">12%</SelectItem>
+                          <SelectItem value="18" className="font-normal text-xs tracking-widest">18%</SelectItem>
+                          <SelectItem value="28" className="font-normal text-xs tracking-widest">28%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 3. Supply Chain Integrity */}
