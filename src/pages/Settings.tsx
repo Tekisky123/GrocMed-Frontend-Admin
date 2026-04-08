@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Save, Bell, Lock, Zap, Globe, ShieldAlert, Trash2, Smartphone, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { adminApi } from "@/api/adminApi";
 
 const Settings = () => {
   const [settings, setSettings] = useState({
@@ -45,22 +46,19 @@ const Settings = () => {
 
   const [downloading, setDownloading] = useState<string | null>(null);
 
-  const handleSecureDownload = async (endpoint: string, filename: string) => {
+  const handleSecureDownload = async (action: 'products' | 'orders' | 'customers', filename: string) => {
     try {
       setDownloading(filename);
-      const token = localStorage.getItem("grocmed_token");
-      const url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/admin/${endpoint}`;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      let blob;
 
-      if (!response.ok) throw new Error("Export failed, please try again.");
+      if (action === 'products') {
+        blob = await adminApi.exportProducts();
+      } else if (action === 'orders') {
+        blob = await adminApi.exportOrders();
+      } else if (action === 'customers') {
+        blob = await adminApi.exportCustomers();
+      }
       
-      const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
@@ -338,7 +336,7 @@ const Settings = () => {
           <div className="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-0">
             <Button
               className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 shadow-sm disabled:opacity-50"
-              onClick={() => handleSecureDownload('exportProducts', 'products_backup.csv')}
+              onClick={() => handleSecureDownload('products', 'products_backup.csv')}
               disabled={downloading !== null}
             >
               {downloading === 'products_backup.csv' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
@@ -346,7 +344,7 @@ const Settings = () => {
             </Button>
             <Button
               className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 shadow-sm disabled:opacity-50"
-              onClick={() => handleSecureDownload('exportOrders', 'orders_backup.csv')}
+              onClick={() => handleSecureDownload('orders', 'orders_backup.csv')}
               disabled={downloading !== null}
             >
                {downloading === 'orders_backup.csv' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
@@ -354,7 +352,7 @@ const Settings = () => {
             </Button>
             <Button
               className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 shadow-sm disabled:opacity-50"
-              onClick={() => handleSecureDownload('exportCustomers', 'customers_backup.csv')}
+              onClick={() => handleSecureDownload('customers', 'customers_backup.csv')}
               disabled={downloading !== null}
             >
               {downloading === 'customers_backup.csv' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}

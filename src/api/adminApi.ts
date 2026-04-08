@@ -38,4 +38,17 @@ export const adminApi = {
         const response = await axiosInstance.post("/api/admin/notification/send", data);
         return response.data;
     },
+    // Data Backup Exports
+    exportProducts: async () => {
+        const response = await axiosInstance.get("/api/admin/exportProducts", { responseType: 'blob' });
+        return response.data;
+    },
+    exportOrders: async () => {
+        const response = await axiosInstance.get("/api/admin/exportOrders", { responseType: 'blob' });
+        return response.data;
+    },
+    exportCustomers: async () => {
+        const response = await axiosInstance.get("/api/admin/exportCustomers", { responseType: 'blob' });
+        return response.data;
+    },
 };
