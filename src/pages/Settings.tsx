@@ -15,7 +15,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Save, Bell, Lock, Zap, Globe, ShieldAlert, Trash2, Smartphone } from "lucide-react";
+import { Save, Bell, Lock, Zap, Globe, ShieldAlert, Trash2, Smartphone, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const Settings = () => {
   const [settings, setSettings] = useState({
@@ -40,6 +41,40 @@ const Settings = () => {
       ...prev,
       [key]: value,
     }));
+  };
+
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const handleSecureDownload = async (endpoint: string, filename: string) => {
+    try {
+      setDownloading(filename);
+      const token = localStorage.getItem("grocmed_token");
+      const url = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/admin/${endpoint}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error("Export failed, please try again.");
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success(`${filename} exported successfully.`);
+    } catch (err) {
+      toast.error(`Failed to export ${filename}`);
+    } finally {
+      setDownloading(null);
+    }
   };
 
   return (
@@ -286,38 +321,46 @@ const Settings = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Danger Zone */}
-      <Card className="p-6 sm:p-8 border-none shadow-sm rounded-3xl bg-red-50/30 ring-1 ring-red-100/50 overflow-hidden relative">
+      {/* Global Data Export */}
+      <Card className="p-6 sm:p-8 border-none shadow-sm rounded-3xl bg-blue-50/30 ring-1 ring-blue-100/50 overflow-hidden relative">
         <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
-          <Trash2 className="w-32 h-32 text-red-600" />
+          <Globe className="w-32 h-32 text-blue-600" />
         </div>
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="space-y-1">
-            <h3 className="text-lg font-black text-red-900 tracking-tight flex items-center gap-2">
-              <ShieldAlert className="w-5 h-5" />
-              System Reset Area
+            <h3 className="text-lg font-black text-blue-900 tracking-tight flex items-center gap-2">
+              <Globe className="w-5 h-5" />
+              System Backup Area
             </h3>
-            <p className="text-[11px] font-normal text-red-600 uppercase tracking-widest opacity-70">Extreme caution required. This action is irreversible.</p>
+            <p className="text-[11px] font-normal text-blue-600 uppercase tracking-widest opacity-70">Download raw application configurations in .csv flat structure</p>
           </div>
 
-          <AlertDialog open={showResetAlert} onOpenChange={setShowResetAlert}>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="h-12 px-8 rounded-2xl font-normal text-xs uppercase tracking-widest shadow-lg shadow-red-200">
-                Wipe All Data
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="rounded-[32px] p-8 border-none shadow-2xl">
-              <AlertDialogTitle className="text-xl font-black text-gray-900">Total System Wipe?</AlertDialogTitle>
-              <AlertDialogDescription className="text-sm font-normal text-gray-400 mt-2">
-                This procedure will return the entire platform configuration to its factory state.
-                All custom business logic and settings will be purged forever.
-              </AlertDialogDescription>
-              <div className="flex flex-col sm:flex-row gap-3 mt-8">
-                <AlertDialogCancel className="h-12 flex-1 rounded-2xl border-gray-100 font-normal uppercase text-[10px] tracking-widest">Abort Procedure</AlertDialogCancel>
-                <AlertDialogAction className="h-12 flex-1 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-normal uppercase text-[10px] tracking-widest">Confirm Reset</AlertDialogAction>
-              </div>
-            </AlertDialogContent>
-          </AlertDialog>
+          <div className="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-0">
+            <Button
+              className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 shadow-sm disabled:opacity-50"
+              onClick={() => handleSecureDownload('exportProducts', 'products_backup.csv')}
+              disabled={downloading !== null}
+            >
+              {downloading === 'products_backup.csv' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              Export Products
+            </Button>
+            <Button
+              className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 shadow-sm disabled:opacity-50"
+              onClick={() => handleSecureDownload('exportOrders', 'orders_backup.csv')}
+              disabled={downloading !== null}
+            >
+               {downloading === 'orders_backup.csv' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              Export Orders
+            </Button>
+            <Button
+              className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 shadow-sm disabled:opacity-50"
+              onClick={() => handleSecureDownload('exportCustomers', 'customers_backup.csv')}
+              disabled={downloading !== null}
+            >
+              {downloading === 'customers_backup.csv' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              Export Customers
+            </Button>
+          </div>
         </div>
       </Card>
     </div>

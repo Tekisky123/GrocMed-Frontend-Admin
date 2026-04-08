@@ -726,18 +726,15 @@ const Products = () => {
                     </div>
                     <div className="space-y-1">
                       <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">GST Bracket (%)</Label>
-                      <Select value={formGstRate} onValueChange={setFormGstRate}>
-                        <SelectTrigger className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white font-normal">
-                          <SelectValue placeholder="Select GST Bracket" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-gray-100 pb-2">
-                          <SelectItem value="0" className="font-normal text-xs tracking-widest">0% (Nil Rated)</SelectItem>
-                          <SelectItem value="5" className="font-normal text-xs tracking-widest">5%</SelectItem>
-                          <SelectItem value="12" className="font-normal text-xs tracking-widest">12%</SelectItem>
-                          <SelectItem value="18" className="font-normal text-xs tracking-widest">18%</SelectItem>
-                          <SelectItem value="28" className="font-normal text-xs tracking-widest">28%</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={formGstRate}
+                        onChange={(e) => setFormGstRate(e.target.value)}
+                        className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white font-normal pl-4"
+                        placeholder="e.g. 18"
+                      />
                     </div>
                   </div>
                 </div>
