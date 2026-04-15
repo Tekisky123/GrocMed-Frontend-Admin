@@ -497,11 +497,24 @@ const Products = () => {
                         </div>
                       </td>
                       <td className="px-6 py-5">
-                        <div className="flex flex-col">
-                          <p className={`text-sm font-normal ${product.stock < 10 ? "text-accent" : "text-gray-900"}`}>{product.stock} Units</p>
-                          <p className="text-[10px] text-gray-400 font-normal">
+                        <div className="flex flex-col gap-1.5">
+                          {product.packagingOptions && product.packagingOptions.length > 0 ? (
+                            product.packagingOptions.map((opt: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <span className={`text-sm font-bold ${Number(opt.stock) < 5 ? "text-accent" : "text-gray-900"}`}>
+                                  {opt.stock}
+                                </span>
+                                <span className="text-[10px] text-gray-400 font-normal uppercase tracking-tight truncate max-w-[80px]">
+                                  {opt.label}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className={`text-sm font-normal ${product.stock < 10 ? "text-accent" : "text-gray-900"}`}>{product.stock} Units</p>
+                          )}
+                          <p className="text-[10px] text-gray-400 font-normal border-t border-gray-50 pt-1 mt-1">
                             {product.perUnitWeightVolume || "No weight"}
-                            {product.unitsPerUnitType > 1 && ` * ${product.unitsPerUnitType} in ${product.unitType}`}
+                            {product.unitsPerUnitType > 1 && ` • ${product.unitsPerUnitType} in ${product.unitType}`}
                           </p>
                         </div>
                       </td>
