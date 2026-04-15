@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { Search, Plus, Edit2, Loader2, Trash2, ImagePlus, X, Package, Crop, Calendar, Box, Weight, ShoppingBag, TrendingUp, Calculator } from "lucide-react";
+import { Search, Plus, Edit2, Loader2, Trash2, ImagePlus, X, Package, Crop, Calendar, TrendingUp, Calculator, ChevronDown, ChevronUp, PackagePlus } from "lucide-react";
 import { productApi } from "@/api/productApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -54,11 +54,6 @@ const BRANDS = [
   "Haldirams"
 ];
 
-const UNIT_TYPES = [
-  "Single Item",
-  "Pack",
-  "Box (Carton)"
-];
 
 const Products = () => {
   const queryClient = useQueryClient();
@@ -82,9 +77,46 @@ const Products = () => {
   // Form states
   const [formCategory, setFormCategory] = useState("");
   const [formBrand, setFormBrand] = useState("");
-  const [formUnitType, setFormUnitType] = useState("Single Item");
   const [formGstRate, setFormGstRate] = useState("0");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // ── Multi-Packaging Options state ──────────────────────────────────────────
+  interface PackagingOption {
+    id: string;
+    label: string;
+    unitsPerPack: number | string;
+    mrp: number | string;
+    salePrice: number | string;
+    minQty: number | string;
+    stock: number | string;
+    expanded: boolean;
+  }
+  const [packagingOptions, setPackagingOptions] = useState<PackagingOption[]>([]);
+
+  const addPackagingOption = () => {
+    setPackagingOptions(prev => [...prev, {
+      id: Math.random().toString(36).slice(2),
+      label: "",
+      unitsPerPack: 1,
+      mrp: "",
+      salePrice: "",
+      minQty: 1,
+      stock: "",
+      expanded: true,
+    }]);
+  };
+
+  const removePackagingOption = (id: string) => {
+    setPackagingOptions(prev => prev.filter(o => o.id !== id));
+  };
+
+  const updatePackagingOption = (id: string, field: keyof PackagingOption, value: any) => {
+    setPackagingOptions(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o));
+  };
+
+  const togglePackagingExpanded = (id: string) => {
+    setPackagingOptions(prev => prev.map(o => o.id === id ? { ...o, expanded: !o.expanded } : o));
+  };
 
   const itemsPerPage = 8;
 
@@ -101,13 +133,27 @@ const Products = () => {
     if (editingProduct && selectedProduct) {
       setFormCategory(selectedProduct.category || "");
       setFormBrand(selectedProduct.brand || "");
-      setFormUnitType(selectedProduct.unitType || "Piece");
       setFormGstRate(selectedProduct.gstRate?.toString() || "0");
+      // Load existing packaging options for editing
+      if (selectedProduct.packagingOptions?.length > 0) {
+        setPackagingOptions(selectedProduct.packagingOptions.map((o: any) => ({
+          id: o._id || Math.random().toString(36).slice(2),
+          label: o.label || "",
+          unitsPerPack: o.unitsPerPack || 1,
+          mrp: o.mrp ?? "",
+          salePrice: o.salePrice ?? "",
+          minQty: o.minQty || 1,
+          stock: o.stock ?? "",
+          expanded: false,
+        })));
+      } else {
+        setPackagingOptions([]);
+      }
     } else if (showAddModal) {
       setFormCategory("");
       setFormBrand("");
-      setFormUnitType("Piece");
       setFormGstRate("0");
+      setPackagingOptions([]);
     }
   }, [editingProduct, showAddModal, selectedProduct]);
 
@@ -180,9 +226,9 @@ const Products = () => {
     setImagePreviews([]);
     setFormCategory("");
     setFormBrand("");
-    setFormUnitType("Single Item");
     setFormGstRate("0");
     setFormErrors({});
+    setPackagingOptions([]);
   };
 
   const handleEditClick = (product: any) => {
@@ -239,14 +285,7 @@ const Products = () => {
     // Add controlled values
     formData.set('category', formCategory);
     formData.set('brand', normalizedBrand);
-    formData.set('unitType', formUnitType);
     formData.set('gstRate', formGstRate);
-
-    // Broadcast Flag
-    const notifyCheckbox = document.getElementById("notifyCustomers") as HTMLInputElement;
-    if (notifyCheckbox && notifyCheckbox.checked && !editingProduct) {
-      formData.append("notifyCustomers", "true");
-    }
 
     // Add boolean values for checkboxes
     const notifyCustomers = (e.currentTarget.elements.namedItem('notifyCustomers') as HTMLInputElement)?.checked || false;
@@ -267,32 +306,6 @@ const Products = () => {
 
     if (!name?.trim()) errors.name = "Product name is required";
     if (!formCategory) errors.category = "Please select a category";
-    if (isNaN(singleUnitPrice) || singleUnitPrice < 0) errors.singleUnitPrice = "Price cannot be negative";
-    if (!stock?.trim()) errors.stock = "Stock quantity is required";
-    if (parseInt(stock) < 0) errors.stock = "Stock cannot be negative";
-
-    // Map Single Price to Backend Fields
-    if (formUnitType === "Single Item") {
-      formData.set('mrp', singleUnitPrice.toString());
-      formData.set('offerPrice', singleUnitPrice.toString());
-    } else {
-      formData.set('perUnitMrp', singleUnitPrice.toString());
-      formData.set('singleUnitPrice', singleUnitPrice.toString());
-
-      const unitsPerUnitType = parseInt(formData.get('unitsPerUnitType') as string);
-      if (isNaN(unitsPerUnitType) || unitsPerUnitType <= 0) {
-        errors.unitsPerUnitType = "Count per " + formUnitType + " is required";
-      }
-
-      const masterMrp = parseFloat(formData.get('mrp') as string);
-      const masterOfferPrice = parseFloat(formData.get('offerPrice') as string);
-
-      if (isNaN(masterMrp) || masterMrp < 0) errors.mrp = "Required";
-      if (isNaN(masterOfferPrice) || masterOfferPrice < 0) errors.offerPrice = "Required";
-      if (!isNaN(masterMrp) && !isNaN(masterOfferPrice) && masterOfferPrice > masterMrp) {
-        errors.offerPrice = "Cannot exceed MRP";
-      }
-    }
 
     if (mfgDate && expDate) {
       const mfg = new Date(mfgDate);
@@ -314,6 +327,21 @@ const Products = () => {
     selectedImages.forEach(file => {
       formData.append('images', file);
     });
+
+    // Append packagingOptions as JSON
+    if (packagingOptions.length > 0) {
+      const validOptions = packagingOptions.filter(o => o.label && o.mrp !== "" && o.salePrice !== "");
+      if (validOptions.length > 0) {
+        formData.set('packagingOptions', JSON.stringify(validOptions.map(o => ({
+          label: o.label,
+          unitsPerPack: Number(o.unitsPerPack) || 1,
+          mrp: Number(o.mrp),
+          salePrice: Number(o.salePrice),
+          minQty: Number(o.minQty) || 1,
+          stock: Number(o.stock) || 0,
+        }))));
+      }
+    }
 
     if (showAddModal) {
       createMutation.mutate(formData);
@@ -448,11 +476,24 @@ const Products = () => {
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex flex-col">
-                          <p className="text-sm font-normal text-gray-900">₹{product.offerPrice} <span className="text-[10px] text-gray-400 ml-1">/{product.unitType}</span></p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[10px] text-primary font-normal">₹{product.singleUnitPrice || "N/A"} per unit</span>
-                            {product.mrp && <span className="text-[10px] text-gray-400 font-normal line-through">₹{product.mrp} MRP</span>}
-                          </div>
+                          {product.packagingOptions && product.packagingOptions.length > 0 ? (
+                            <>
+                              <p className="text-sm font-normal text-gray-900">Starts at ₹{product.packagingOptions[0].salePrice || product.packagingOptions[0].mrp} <span className="text-[10px] text-primary ml-1 bg-orange-50 px-1 py-0.5 rounded border border-orange-100">{product.packagingOptions.length} Options</span></p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[10px] text-gray-400 font-normal truncate">
+                                  Default: {product.packagingOptions[0].label}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-sm font-normal text-gray-900">₹{product.offerPrice} <span className="text-[10px] text-gray-400 ml-1">/{product.unitType}</span></p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[10px] text-primary font-normal">₹{product.singleUnitPrice || "N/A"} per unit</span>
+                                {product.mrp && <span className="text-[10px] text-gray-400 font-normal line-through">₹{product.mrp} MRP</span>}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-5">
@@ -554,7 +595,7 @@ const Products = () => {
                       <SearchableSelect options={BRANDS} value={formBrand} onChange={setFormBrand} placeholder="Choose Brand" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-1">
                       <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">Category <span className="text-red-500 font-black">*</span></Label>
                       <SearchableSelect
@@ -566,6 +607,15 @@ const Products = () => {
                       />
                       {formErrors.category && <p className="text-[10px] text-red-500 font-normal mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{formErrors.category}</p>}
                     </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">Single Piece/Pack Weight</Label>
+                      <Input
+                        name="perUnitWeightVolume"
+                        defaultValue={selectedProduct?.perUnitWeightVolume}
+                        className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white text-sm font-normal transition-all"
+                        placeholder="e.g. 250g, 1L, 500ml"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">Detailed Description</Label>
@@ -573,140 +623,245 @@ const Products = () => {
                   </div>
                 </div>
 
-                {/* 2. Packaging & Packaging Details */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-2 px-1">
-                    <Box className="w-4 h-4 text-purple-500" />
-                    <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Packaging Spec</h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">Packaging Type <span className="text-red-500 font-black">*</span></Label>
-                      <Select value={formUnitType} onValueChange={setFormUnitType}>
-                        <SelectTrigger className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white font-normal">
-                          <SelectValue placeholder="Select Unit" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-gray-100 pb-2">
-                          {UNIT_TYPES.map(unit => (
-                            <SelectItem key={unit} value={unit} className="font-normal text-xs uppercase tracking-widest">{unit}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">Single Unit Weight</Label>
-                      <Input name="perUnitWeightVolume" defaultValue={selectedProduct?.perUnitWeightVolume} className="h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white text-sm font-normal" placeholder="e.g. 100g, 10ml" />
-                    </div>
-                  </div>
-                  {["Pack", "Box (Carton)"].includes(formUnitType) && (
-                    <div className="p-5 rounded-2xl bg-orange-50/30 border border-orange-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <Label className="text-[11px] font-black text-primary uppercase tracking-widest ml-1">Units per {formUnitType} <span className="text-red-500 font-black">*</span></Label>
-                      <div className="mt-3">
-                        <p className="text-[10px] text-gray-500 font-normal mb-2 uppercase tracking-wide">How many single units are inside one {formUnitType}?</p>
-                        <Input
-                          type="number"
-                          name="unitsPerUnitType"
-                          min="0"
-                          defaultValue={selectedProduct?.unitsPerUnitType}
-                          className={`h-12 rounded-xl border-orange-100 bg-white font-normal transition-all ${formErrors.unitsPerUnitType ? "border-red-500 ring-1 ring-red-500 bg-red-50/20" : ""}`}
-                          placeholder="e.g. 12 units in 1 box"
-                        />
-                        {formErrors.unitsPerUnitType && <p className="text-[10px] text-red-500 font-normal mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{formErrors.unitsPerUnitType}</p>}
+                {/* ── Packaging / Buying Options ───────────────────────────── */}
+                <div className="space-y-4">
+                  {/* Section header */}
+                  <div className="flex items-start justify-between px-1 gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <PackagePlus className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                        <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Buying Options</h3>
                       </div>
+                      <p className="text-xs text-gray-400 font-normal mt-1 ml-6">
+                        Define how your product is sold — e.g. a full <strong>Carton of 24 packs</strong>, a <strong>Strip of 15 pieces</strong>, or a <strong>Single unit</strong>. You can add as many options as you sell.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addPackagingOption}
+                      className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-xl transition-colors border border-violet-100"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Option
+                    </button>
+                  </div>
+
+                  {packagingOptions.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={addPackagingOption}
+                      className="w-full border-2 border-dashed border-violet-100 rounded-2xl p-8 text-center hover:border-violet-300 hover:bg-violet-50/30 transition-all group"
+                    >
+                      <PackagePlus className="w-10 h-10 text-violet-200 group-hover:text-violet-400 mx-auto mb-3 transition-colors" />
+                      <p className="text-sm font-bold text-gray-500 group-hover:text-violet-600 transition-colors">Click to add your first buying option</p>
+                      <p className="text-xs text-gray-300 mt-1.5 font-normal">
+                        Examples: <span className="text-gray-400">Carton of 24 packs</span> · <span className="text-gray-400">Strip of 15 pieces</span> · <span className="text-gray-400">Single chocolate bar</span>
+                      </p>
+                    </button>
+                  ) : (
+                    <div className="space-y-3">
+                      {packagingOptions.map((opt, idx) => (
+                        <div key={opt.id} className="rounded-2xl border border-violet-100 bg-white overflow-hidden shadow-sm">
+
+                          {/* ── Accordion Header ── */}
+                          <button
+                            type="button"
+                            onClick={() => togglePackagingExpanded(opt.id)}
+                            className="w-full flex items-center justify-between px-5 py-4 hover:bg-violet-50/40 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="w-7 h-7 rounded-full bg-violet-100 text-violet-600 text-xs font-black flex items-center justify-center flex-shrink-0">
+                                {idx + 1}
+                              </span>
+                              <div className="text-left">
+                                <p className="text-sm font-bold text-gray-800">
+                                  {opt.label || <span className="text-gray-300 font-normal italic">Option name not set...</span>}
+                                </p>
+                                {!opt.expanded && opt.mrp !== "" && (
+                                  <p className="text-xs text-gray-400 font-normal mt-0.5">
+                                    {opt.unitsPerPack} {Number(opt.unitsPerPack) === 1 ? "unit" : "units"} per pack
+                                    &nbsp;·&nbsp;MRP ₹{opt.mrp}
+                                    &nbsp;·&nbsp;Selling ₹{opt.salePrice}
+                                    &nbsp;·&nbsp;{opt.stock !== "" ? `${opt.stock} in stock` : "no stock set"}
+                                    &nbsp;·&nbsp;Min {opt.minQty} to order
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); removePackagingOption(opt.id); }}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-50 text-red-300 hover:text-red-500 transition-colors"
+                                title="Remove this option"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                              {opt.expanded
+                                ? <ChevronUp className="w-4 h-4 text-gray-400" />
+                                : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                            </div>
+                          </button>
+
+                          {/* ── Accordion Body ── */}
+                          {opt.expanded && (
+                            <div className="px-5 pb-6 pt-4 bg-violet-50/20 border-t border-violet-50 space-y-5 animate-in fade-in slide-in-from-top-1 duration-200">
+
+                              {/* 1. Option Name */}
+                              <div>
+                                <Label className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1 block">
+                                  Option Name <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                  value={opt.label}
+                                  onChange={(e) => updatePackagingOption(opt.id, 'label', e.target.value)}
+                                  placeholder="e.g. Carton of 24 packs, Strip of 15 pieces, Single unit"
+                                  className="h-12 rounded-xl border-violet-100 bg-white focus:bg-white text-sm font-normal"
+                                />
+                                <p className="text-[11px] text-gray-400 mt-1.5 font-normal">
+                                  💡 This name appears on the customer app as a buying option. Be descriptive — <em>"Carton (24 packs)"</em> is better than just <em>"Carton"</em>.
+                                </p>
+                              </div>
+
+                              {/* 2. Four fields grid */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                                {/* Units per Pack */}
+                                <div>
+                                  <Label className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1 block">
+                                    How many units are inside this pack?
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={opt.unitsPerPack}
+                                    onChange={(e) => updatePackagingOption(opt.id, 'unitsPerPack', e.target.value)}
+                                    placeholder="e.g. 24"
+                                    className="h-12 rounded-xl border-violet-100 bg-white focus:bg-white text-sm font-normal"
+                                  />
+                                  <p className="text-[11px] text-gray-400 mt-1.5 font-normal">
+                                    If 1 Carton holds 24 individual packs, enter <strong>24</strong>. For a single piece, enter <strong>1</strong>.
+                                  </p>
+                                </div>
+
+                                {/* Min Buy Qty */}
+                                <div>
+                                  <Label className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1 block">
+                                    Minimum Packs Customer Must Buy
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    value={opt.minQty}
+                                    onChange={(e) => updatePackagingOption(opt.id, 'minQty', e.target.value)}
+                                    placeholder="e.g. 1"
+                                    className="h-12 rounded-xl border-violet-100 bg-white focus:bg-white text-sm font-normal"
+                                  />
+                                  <p className="text-[11px] text-gray-400 mt-1.5 font-normal">
+                                    Set to <strong>1</strong> if there's no minimum. Set to <strong>2</strong> if customer must buy at least 2 cartons at a time, etc.
+                                  </p>
+                                </div>
+
+                                {/* MRP */}
+                                <div>
+                                  <Label className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1 block">
+                                    MRP — Maximum Retail Price (₹) <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={opt.mrp}
+                                    onChange={(e) => updatePackagingOption(opt.id, 'mrp', e.target.value)}
+                                    placeholder="e.g. 480.00"
+                                    className="h-12 rounded-xl border-violet-100 bg-white focus:bg-white text-sm font-normal"
+                                  />
+                                  <p className="text-[11px] text-gray-400 mt-1.5 font-normal">
+                                    The highest price printed on the pack / government regulated price. Customers see this as the <em>original price</em> (struck through if there's a discount).
+                                  </p>
+                                </div>
+
+                                {/* Sale Price */}
+                                <div>
+                                  <Label className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1 block">
+                                    Your Selling Price (₹) <span className="text-red-500">*</span>
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={opt.salePrice}
+                                    onChange={(e) => updatePackagingOption(opt.id, 'salePrice', e.target.value)}
+                                    placeholder="e.g. 420.00"
+                                    className="h-12 rounded-xl border-orange-100 bg-primary/5 focus:bg-white text-sm font-normal ring-1 ring-primary/10"
+                                  />
+                                  <p className="text-[11px] text-gray-400 mt-1.5 font-normal">
+                                    The price the customer actually pays. Must be ≤ MRP. If same as MRP, no discount badge is shown.
+                                  </p>
+                                </div>
+
+                                {/* Stock for this option */}
+                                <div>
+                                  <Label className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-1 block">
+                                    Stock Available for This Option
+                                  </Label>
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    value={opt.stock}
+                                    onChange={(e) => updatePackagingOption(opt.id, 'stock', e.target.value)}
+                                    placeholder="e.g. 50"
+                                    className="h-12 rounded-xl border-green-100 bg-green-50/30 focus:bg-white text-sm font-normal ring-1 ring-green-100/50"
+                                  />
+                                  <p className="text-[11px] text-gray-400 mt-1.5 font-normal">
+                                    How many of <em>this pack type</em> are currently available. e.g. if you have 10 Cartons in stock, enter <strong>10</strong>.
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Live Customer Preview */}
+                              {opt.label && opt.mrp !== "" && opt.salePrice !== "" && (
+                                <div className="rounded-xl border border-violet-100 bg-white p-4">
+                                  <p className="text-[10px] font-black text-violet-400 uppercase tracking-widest mb-3">
+                                    👁 Customer Preview — How this will look on the app
+                                  </p>
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+                                      <Package className="w-5 h-5 text-violet-600" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-bold text-gray-800 truncate">{opt.label}</p>
+                                      <p className="text-xs text-gray-400 font-normal mt-0.5">
+                                        Contains {opt.unitsPerPack} {Number(opt.unitsPerPack) === 1 ? "unit" : "units"}
+                                        {Number(opt.minQty) > 1 ? ` · Min order: ${opt.minQty} packs` : ""}
+                                      </p>
+                                    </div>
+                                    <div className="text-right flex-shrink-0">
+                                      <p className="text-base font-black text-primary">₹{opt.salePrice}</p>
+                                      {Number(opt.mrp) > Number(opt.salePrice) && (
+                                        <p className="text-xs text-gray-400 line-through font-normal">₹{opt.mrp}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={addPackagingOption}
+                        className="w-full flex items-center justify-center gap-2 py-3.5 text-xs font-bold text-violet-500 border border-dashed border-violet-200 rounded-2xl hover:bg-violet-50 transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Another Buying Option
+                      </button>
                     </div>
                   )}
                 </div>
 
-                {/* 3. Pricing & Master Inventory */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-2 px-1">
-                    <ShoppingBag className="w-4 h-4 text-orange-500" />
-                    <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Pricing & Inventory</h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">
-                        {formUnitType === "Single Item" ? "Unit Price (₹)" : "Single Unit Price (₹)"}
-                        <span className="text-red-500 font-black ml-1">*</span>
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        name="singleUnitPrice"
-                        defaultValue={selectedProduct?.singleUnitPrice}
-                        className={`h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white font-normal ${formErrors.singleUnitPrice ? "border-red-500 ring-1 ring-red-500 bg-red-50/20" : ""}`}
-                        placeholder="0.00"
-                      />
-                      {formErrors.singleUnitPrice && <p className="text-[10px] text-red-500 font-normal mt-1 ml-1">{formErrors.singleUnitPrice}</p>}
-                    </div>
-
-                    {formUnitType === "Single Item" && (
-                      <div className="space-y-1">
-                        <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">Available Units <span className="text-red-500 font-black">*</span></Label>
-                        <Input
-                          type="number"
-                          name="stock"
-                          min="0"
-                          defaultValue={selectedProduct?.stock}
-                          className={`h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white font-normal transition-all ${formErrors.stock ? "border-red-500 ring-1 ring-red-500 bg-red-50/20" : ""}`}
-                          placeholder="qty"
-                        />
-                        {formErrors.stock && <p className="text-[10px] text-red-500 font-normal mt-1 ml-1">{formErrors.stock}</p>}
-                      </div>
-                    )}
-                  </div>
-
-                  {formUnitType !== "Single Item" && (
-                    <div className="pt-4 border-t border-gray-50 space-y-6">
-                      <div className="flex items-center gap-2 px-1">
-                        <ShoppingBag className="w-4 h-4 text-orange-500" />
-                        <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Master {formUnitType} Details</h3>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <div className="space-y-1">
-                          <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">Total {formUnitType} MRP (₹) <span className="text-red-500 font-black">*</span></Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            name="mrp"
-                            defaultValue={selectedProduct?.mrp}
-                            className={`h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white font-normal transition-all ${formErrors.mrp ? "border-red-500 ring-1 ring-red-500 bg-red-50/20" : ""}`}
-                            placeholder="0.00"
-                          />
-                          {formErrors.mrp && <p className="text-[10px] text-red-500 font-normal mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{formErrors.mrp}</p>}
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">Total {formUnitType} Sale Price (₹) <span className="text-red-500 font-black">*</span></Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            name="offerPrice"
-                            defaultValue={selectedProduct?.offerPrice || selectedProduct?.price}
-                            className={`h-14 rounded-2xl border-primary/10 bg-primary/5 focus:bg-white font-normal ring-1 ring-primary/5 transition-all ${formErrors.offerPrice ? "border-red-500 ring-1 ring-red-500 bg-red-50/20" : ""}`}
-                            placeholder="0.00"
-                          />
-                          {formErrors.offerPrice && <p className="text-[10px] text-red-500 font-normal mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{formErrors.offerPrice}</p>}
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">{formUnitType} Stocks Available <span className="text-red-500 font-black">*</span></Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            name="stock"
-                            defaultValue={selectedProduct?.stock}
-                            className={`h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white font-normal transition-all ${formErrors.stock ? "border-red-500 ring-1 ring-red-500 bg-red-50/20" : ""}`}
-                            placeholder="0"
-                          />
-                          {formErrors.stock && <p className="text-[10px] text-red-500 font-normal mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{formErrors.stock}</p>}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
 
                 {/* Accounting & Taxation */}
                 <div className="space-y-6">
@@ -764,21 +919,6 @@ const Products = () => {
                         {formErrors.expiryDate && <p className="text-[10px] text-red-500 font-normal mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{formErrors.expiryDate}</p>}
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1 text-primary">Min Order Qty</Label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          name="minimumQuantity"
-                          min="1"
-                          defaultValue={selectedProduct?.minimumQuantity || 1}
-                          className={`h-14 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white font-normal pl-4 transition-all ${formErrors.minimumQuantity ? "border-red-500 ring-1 ring-red-500 bg-red-50/20" : ""}`}
-                          placeholder="1"
-                        />
-                        {formErrors.minimumQuantity && <p className="text-[10px] text-red-500 font-normal mt-1 ml-1 animate-in fade-in slide-in-from-top-1">{formErrors.minimumQuantity}</p>}
-                      </div>
-                      <p className="text-[9px] text-gray-400 font-normal mt-1 ml-1">Minimum units per order</p>
-                    </div>
                   </div>
                 </div>
 
@@ -823,6 +963,9 @@ const Products = () => {
                   </div>
                   <input type="file" ref={fileInputRef} onChange={handleImageChange} multiple accept="image/*" className="hidden" />
                 </div>
+
+
+
 
                 {/* 5. Marketing & Visibility */}
                 <div className="space-y-6">
@@ -872,23 +1015,6 @@ const Products = () => {
                     <div>
                       <Label htmlFor="isActive" className="text-sm font-normal text-gray-900 cursor-pointer block">Public Availability</Label>
                       <p className="text-[10px] text-gray-400 font-normal uppercase tracking-widest mt-0.5">Toggle to show or hide from customer catalogue.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Visibility</Label>
-                      <div className="flex items-center space-x-2 border p-3 rounded-md">
-                        <input
-                          type="checkbox"
-                          id="notifyCustomers"
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                          defaultChecked={true} // Default to true for engagement? Or false for safety.
-                        />
-                        <Label htmlFor="notifyCustomers" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                          Broadcast to Customers
-                        </Label>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        If checked, a push notification will be sent to all customers announcing this product.
-                      </p>
                     </div>
                   </div>
                 </div>

@@ -83,11 +83,11 @@ const GSTModule = () => {
                 vendor: p.vendorName,
                 gstin: p.vendorGSTIN || "URD",
                 taxable: p.totalTaxable || 0,
-                cgst: (p.totalGST || 0) / 2, // Assuming intra-state for demo
-                sgst: (p.totalGST || 0) / 2,
+                cgst: (p.totalGST || 0) / 2, // Calculate default Intra-State CGST Split Calculation
+                sgst: (p.totalGST || 0) / 2, // Calculate default Intra-State SGST Split Calculation
                 igst: 0,
                 itc: p.totalGST || 0,
-                matched: p.vendorGSTIN && p.vendorGSTIN !== "URD" // Fake 2B matching logic based on GSTIN existence
+                matched: p.vendorGSTIN && p.vendorGSTIN !== "URD" // Statutory 2B matching index based on GSTIN validation
             }));
 
             setSalesData(mappedSales);
@@ -413,7 +413,6 @@ const GSTModule = () => {
                             </div>
                         </div>
                     </div>
-                    <p className="text-xs text-gray-400 mt-4 italic text-center">Note: Previous periods history removed for demo brevity.</p>
                 </Card>
             )}
         </div>

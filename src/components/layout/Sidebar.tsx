@@ -18,6 +18,7 @@ import {
   Building2,
   Scale,
   BarChart3,
+  MapPin,
 } from "lucide-react";
 import logo from "@/assets/logo-removebg-preview.png";
 
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
   { type: "link", label: "Delivery Partners", icon: Truck, href: "/delivery-partners" },
   { type: "link", label: "Notifications", icon: Bell, href: "/notifications" },
   { type: "link", label: "Admin Management", icon: Shield, href: "/admin-management" },
+  { type: "link", label: "Pincodes", icon: MapPin, href: "/pincodes" },
   { type: "link", label: "Settings", icon: Settings, href: "/settings" },
   { type: "section", label: "Accounts & Finance" },
   { type: "link", label: "Finance", icon: Landmark, href: "/finance" },

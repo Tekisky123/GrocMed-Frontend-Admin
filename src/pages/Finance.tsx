@@ -186,15 +186,34 @@ const Finance = () => {
         }
     };
 
-    // Derived filtering
-    const cashData = journals.filter(j => j.type === "Receipt" || j.type === "Payment");
-    const bankData = journals.filter(j => j.type === "Contra" || j.narration.toLowerCase().includes('bank'));
-    const nonCashData = journals.filter(j => j.type === "Journal" || j.type === "Purchase" || j.type === "Sales");
+    // Strict Ledger Identifiers
+    const cashLedgerIds = ledgers.filter(l => l.name.toLowerCase().includes('cash')).map(l => l._id);
+    const bankLedgerIds = ledgers.filter(l => l.name.toLowerCase().includes('bank') || l.subGroup === 'Bank').map(l => l._id);
 
-    const cashBalance = cashData.reduce((acc, t) => t.type === "Receipt" ? acc + t.totalAmount : acc - t.totalAmount, 0);
-    const bankBalance = bankData.reduce((acc, t) => acc + t.totalAmount, 0); // Simplified demo mapping
-    const totalReceipts = cashData.filter(t => t.type === "Receipt").reduce((a, t) => a + t.totalAmount, 0);
-    const totalPayments = cashData.filter(t => t.type === "Payment").reduce((a, t) => a + t.totalAmount, 0);
+    // Filter Journal Registries
+    const cashData = journals.filter(j => j.entries.some((e: any) => cashLedgerIds.includes(e.ledgerId?._id || e.ledgerId)));
+    const bankData = journals.filter(j => j.entries.some((e: any) => bankLedgerIds.includes(e.ledgerId?._id || e.ledgerId)));
+    const nonCashData = journals.filter(j => j.type === "Journal" || j.type === "Contra");
+
+    // Exact Book Balance Calculations (Double Entry)
+    let cashBalance = 0;
+    let bankBalance = 0;
+    let totalReceipts = 0;
+    let totalPayments = 0;
+
+    journals.forEach(j => {
+        j.entries.forEach((e: any) => {
+            const entryLedgerId = e.ledgerId?._id || e.ledgerId;
+            if (cashLedgerIds.includes(entryLedgerId)) {
+                cashBalance += (e.debit - e.credit);  // Cash is an Asset (Debit normal)
+                if (e.debit > 0) totalReceipts += e.debit;
+                if (e.credit > 0) totalPayments += e.credit;
+            }
+            if (bankLedgerIds.includes(entryLedgerId)) {
+                bankBalance += (e.debit - e.credit); // Bank is an Asset (Debit normal)
+            }
+        });
+    });
 
     return (
         <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">

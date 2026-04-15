@@ -11,9 +11,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend,
-} from "recharts";
-import {
     BarChart3, Download, TrendingUp, TrendingDown, Scale, FileText, ArrowRight, XCircle
 } from "lucide-react";
 import { accountingApi } from "@/api/accountingApi";
@@ -160,11 +157,7 @@ const Reports = () => {
     const totalProfit = pnlData?.netProfit || 0;
     const grossProfit = pnlData?.grossProfit || 0;
 
-    // Build Chart Data dynamically from Income vs Expense by month if API supported it.
-    // Since API returns aggregates, we'll dummy the monthly chart to match the total.
-    const chartData = [
-        { name: "Total", Revenue: totalRevenue, COGS: totalCOGS, Profit: totalProfit }
-    ];
+
 
     return (
         <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">

@@ -51,4 +51,25 @@ export const adminApi = {
         const response = await axiosInstance.get("/api/admin/exportCustomers", { responseType: 'blob' });
         return response.data;
     },
+    // Pincode Management
+    getAllPincodes: async (params?: { limit?: number; search?: string }) => {
+        const response = await axiosInstance.get("/api/admin/pincodes", { params });
+        return response.data;
+    },
+    createPincode: async (data: { pincode: string; deliveryNote?: string; isActive?: boolean }) => {
+        const response = await axiosInstance.post("/api/admin/pincodes", data);
+        return response.data;
+    },
+    updatePincode: async (id: string, data: { pincode?: string; deliveryNote?: string; isActive?: boolean }) => {
+        const response = await axiosInstance.put(`/api/admin/pincodes/${id}`, data);
+        return response.data;
+    },
+    togglePincode: async (id: string) => {
+        const response = await axiosInstance.patch(`/api/admin/pincodes/${id}/toggle`);
+        return response.data;
+    },
+    deletePincode: async (id: string) => {
+        const response = await axiosInstance.delete(`/api/admin/pincodes/${id}`);
+        return response.data;
+    },
 };

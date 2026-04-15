@@ -109,10 +109,9 @@ const Inventory = () => {
             const payload = {
                 productId: adjProductId,
                 date: new Date(adjDate).toISOString(),
-                type: adjType,
+                movementType: adjType,
                 quantity: Number(adjQty),
                 reason: adjReason,
-                narration: `${adjType} Adjustment: ${adjReason}`
             };
 
             await accountingApi.createAdjustment(payload);
@@ -129,14 +128,24 @@ const Inventory = () => {
 
     // Derived Statistics
     const mappedStock = products.map(p => {
-        const cost = p.price || 0;
-        const closing = p.stock || 0;
-        const alert = closing <= 10; // Simple threshold
+        // Price/Cost: Use packagingOptions[0] salePrice, or offerPrice, or mrp
+        let cost = p.offerPrice || p.mrp || 0;
+        if (p.packagingOptions && p.packagingOptions.length > 0) {
+            cost = p.packagingOptions[0].salePrice || p.packagingOptions[0].mrp || 0;
+        }
+
+        // Stock/Closing: Sum up all packagingOptions stock, or use top-level stock
+        let closing = p.stock || 0;
+        if (p.packagingOptions && p.packagingOptions.length > 0) {
+            closing = p.packagingOptions.reduce((acc: number, opt: any) => acc + (Number(opt.stock) || 0), 0);
+        }
+
+        const alert = closing <= 10;
         return {
             id: p._id.substring(0, 8).toUpperCase(),
             fullId: p._id,
             name: p.name,
-            category: p.category?.name || "General",
+            category: p.category || "General",
             unit: "Unit",
             closing,
             cost,
@@ -159,10 +168,9 @@ const Inventory = () => {
     const categories = Array.from(new Set(mappedStock.map(i => i.category)));
 
     const typeColor: Record<string, string> = {
-        Addition: "bg-green-50 text-green-700 border-green-200",
-        Reduction: "bg-red-50 text-red-700 border-red-200",
-        Damage: "bg-orange-50 text-orange-700 border-orange-200",
-        Theft: "bg-gray-100 text-gray-800 border-gray-300"
+        Inward: "bg-green-50 text-green-700 border-green-200",
+        Outward: "bg-red-50 text-red-700 border-red-200",
+        "Shrinkage/Damaged": "bg-orange-50 text-orange-700 border-orange-200",
     };
 
     return (
@@ -330,16 +338,16 @@ const Inventory = () => {
                                         <td className="px-6 py-4 text-sm text-gray-600">{new Date(m.date).toLocaleDateString()}</td>
                                         <td className="px-6 py-4 text-sm font-semibold text-gray-900">{m.productId?.name || "Unknown Product"}</td>
                                         <td className="px-6 py-4">
-                                            <Badge className={`text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 w-fit ${typeColor[m.type] || typeColor.Reduction}`}>
-                                                {m.type === "Addition" ? <ArrowDownRight className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
-                                                {m.type}
+                                            <Badge className={`text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 w-fit ${typeColor[m.movementType] || "bg-gray-100 text-gray-700 border-gray-200"}`}>
+                                                {m.movementType === "Inward" ? <ArrowDownRight className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
+                                                {m.movementType}
                                             </Badge>
                                         </td>
-                                        <td className={`px-6 py-4 text-sm font-bold ${m.type === "Addition" ? "text-green-600" : "text-red-500"}`}>
-                                            {m.type === "Addition" ? "+" : "-"}{m.quantity}
+                                        <td className={`px-6 py-4 text-sm font-bold ${m.movementType === "Inward" ? "text-green-600" : "text-red-500"}`}>
+                                            {m.movementType === "Inward" ? "+" : ""}{m.quantity}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">{m.reason}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-gray-900">{m.status}</td>
+                                        <td className="px-6 py-4 text-sm font-bold text-gray-900">{m.status || "Posted"}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -376,10 +384,9 @@ const Inventory = () => {
                                     <SelectValue placeholder="Addition / Reduction" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Addition">Addition</SelectItem>
-                                    <SelectItem value="Reduction">Reduction</SelectItem>
-                                    <SelectItem value="Damage">Damage / Spoilage</SelectItem>
-                                    <SelectItem value="Theft">Loss / Theft</SelectItem>
+                                    <SelectItem value="Inward">Inward (Stock Received)</SelectItem>
+                                    <SelectItem value="Outward">Outward (Stock Dispatched)</SelectItem>
+                                    <SelectItem value="Shrinkage/Damaged">Shrinkage / Damaged</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

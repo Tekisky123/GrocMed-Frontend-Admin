@@ -32,6 +32,7 @@ import Payroll from "./pages/Payroll";
 import FixedAssets from "./pages/FixedAssets";
 import StatutoryRegisters from "./pages/StatutoryRegisters";
 import Reports from "./pages/Reports";
+import Pincodes from "./pages/Pincodes";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,9 @@ const App = () => (
             <Route path="/assets" element={makeProtected(FixedAssets)} />
             <Route path="/statutory" element={makeProtected(StatutoryRegisters)} />
             <Route path="/reports" element={makeProtected(Reports)} />
+
+            {/* Operations */}
+            <Route path="/pincodes" element={makeProtected(Pincodes)} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

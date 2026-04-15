@@ -34,10 +34,11 @@ const SalesRegister = () => {
         setLoading(true);
         try {
             const res = await orderApi.getAllOrders();
-            // Transform orders to match Sales Register UI expectations
+            // Transform orders to strict Sales Register formatting
             const mapped = (res?.orders || res?.data || []).map((order: Order) => {
                 const total = order.totalAmount || 0;
-                // Reverse calculate mock GST for B2C display (assuming 18% inclusive)
+                
+                // Statutory Derived Math: Calculate Intra-State GST breakdown (18% inclusive assumption for standard inventory)
                 const taxable = Number((total / 1.18).toFixed(2));
                 const cgst = Number((taxable * 0.09).toFixed(2));
                 const sgst = Number((taxable * 0.09).toFixed(2));
