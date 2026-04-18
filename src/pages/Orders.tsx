@@ -33,8 +33,10 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Truck,
 } from "lucide-react";
 import { orderApi, Order } from "@/api/orderApi";
+import { deliveryPartnerApi } from "@/api/deliveryPartnerApi";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -45,6 +47,7 @@ const Orders = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState("");
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
   const itemsPerPage = 10;
   const queryClient = useQueryClient();
 
@@ -53,6 +56,14 @@ const Orders = () => {
     queryKey: ['orders'],
     queryFn: orderApi.getAllOrders,
   });
+
+  // Fetch delivery partners
+  const { data: partnersResponse } = useQuery({
+    queryKey: ['deliveryPartners'],
+    queryFn: deliveryPartnerApi.getAllPartners,
+  });
+
+  const deliveryPartners = (partnersResponse?.data || []).filter((p: any) => p.isActive);
 
   const allOrders = ordersResponse?.data || [];
 
@@ -74,13 +85,14 @@ const Orders = () => {
 
   // Update order status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      orderApi.updateOrderStatus(id, status),
+    mutationFn: ({ id, status, deliveryPartnerId }: { id: string; status: string; deliveryPartnerId?: string | null }) =>
+      orderApi.updateOrderStatus(id, status, deliveryPartnerId || undefined),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       toast.success("Order status updated and customer notified!");
       setShowStatusModal(false);
       setSelectedOrder(null);
+      setSelectedPartnerId(null);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || "Failed to update status");
@@ -92,6 +104,7 @@ const Orders = () => {
       updateStatusMutation.mutate({
         id: selectedOrder._id,
         status: newStatus,
+        deliveryPartnerId: selectedPartnerId,
       });
     }
   };
@@ -246,6 +259,12 @@ const Orders = () => {
                         <div>
                           <p className="text-sm font-semibold text-gray-900">{order.customer.name}</p>
                           <p className="text-[10px] text-gray-400 font-normal">{order.customer.phone}</p>
+                          {order.deliveryPartner && (
+                            <p className="text-[10px] text-primary font-bold mt-1 inline-flex items-center gap-1">
+                              <Truck className="w-2.5 h-2.5" />
+                              {order.deliveryPartner.name}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -269,6 +288,7 @@ const Orders = () => {
                           onClick={() => {
                             setSelectedOrder(order);
                             setNewStatus(order.orderStatus);
+                            setSelectedPartnerId(order.deliveryPartner?._id || null);
                             setShowStatusModal(true);
                           }}
                           className="h-9 px-4 rounded-xl font-normal text-xs uppercase text-primary hover:bg-primary/5 transition-all border-primary/20"
@@ -356,6 +376,62 @@ const Orders = () => {
                   <SelectItem value="Cancelled">❌ Cancelled</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div>
+              <p className="text-xs font-normal text-gray-400 uppercase tracking-widest mb-3">Assign Delivery Partner</p>
+              <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar pb-2">
+                <div 
+                  onClick={() => setSelectedPartnerId(null)}
+                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${selectedPartnerId === null ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 hover:border-primary/30'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center">
+                      <XCircle className="w-5 h-5 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Unassigned</p>
+                      <p className="text-[10px] text-gray-400">Clear assignment</p>
+                    </div>
+                  </div>
+                </div>
+
+                {deliveryPartners.map((partner: any) => (
+                  <div 
+                    key={partner._id} 
+                    onClick={() => setSelectedPartnerId(partner._id)}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${selectedPartnerId === partner._id ? 'border-primary bg-primary/5 shadow-sm' : 'border-gray-100 hover:border-primary/30'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-primary text-xs border border-primary/5">
+                        {partner.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{partner.name}</p>
+                        <p className="text-[10px] text-gray-400 font-normal">{partner.vehicleType} • {partner.vehicleNumber}</p>
+                      </div>
+                    </div>
+                    <Badge 
+                      className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border ${
+                        partner.status === 'Available' 
+                          ? 'bg-green-50 text-green-700 border-green-200' 
+                          : partner.status === 'Busy'
+                            ? 'bg-orange-50 text-orange-700 border-orange-200'
+                            : 'bg-gray-50 text-gray-600 border-gray-200'
+                      }`}
+                    >
+                      {partner.status}
+                    </Badge>
+                  </div>
+                ))}
+                
+                {deliveryPartners.length === 0 && (
+                  <div className="py-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <Truck className="w-8 h-8 text-gray-300 mx-auto mb-2 opacity-50" />
+                    <p className="text-[10px] text-gray-400 font-normal uppercase tracking-widest">No Active Partners Found</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -456,6 +532,15 @@ const Orders = () => {
                       {format(new Date(selectedOrder.createdAt), 'MMM dd, yyyy HH:mm')}
                     </span>
                   </div>
+                  {selectedOrder.deliveryPartner && (
+                    <div className="flex items-center justify-between pt-2 mt-2 border-t border-green-100">
+                      <span className="text-sm font-normal text-gray-600">Assigned Partner</span>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-gray-900">{selectedOrder.deliveryPartner.name}</p>
+                        <p className="text-[10px] text-gray-500">{selectedOrder.deliveryPartner.phone}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

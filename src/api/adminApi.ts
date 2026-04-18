@@ -25,6 +25,15 @@ export const adminApi = {
         const response = await axiosInstance.delete(`/api/admin/deleteAdmin/${id}`);
         return response.data;
     },
+    // Global Settings
+    getSettings: async () => {
+        const response = await axiosInstance.get('/api/admin/settings');
+        return response.data;
+    },
+    updateSettings: async (data: any) => {
+        const response = await axiosInstance.put('/api/admin/settings', data);
+        return response.data;
+    },
     // Custom Notifications
     getAllNotifications: async (params?: any) => {
         const response = await axiosInstance.get("/api/admin/notification/all", { params });

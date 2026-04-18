@@ -19,9 +19,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
-    Scale, Users, UserCheck, ArrowLeftRight, Link2, Plus, Download, Building2,
+    Scale, Users, UserCheck, ArrowLeftRight, Link2, Plus, Download, Building2, Settings, Info
 } from "lucide-react";
 import { accountingApi } from "@/api/accountingApi";
+import { adminApi } from "@/api/adminApi";
 import { exportToCSV } from "@/utils/exportUtils";
 
 type StatView = "members" | "directors" | "transfers" | "charges";
@@ -45,6 +46,7 @@ const StatutoryRegisters = () => {
     const [sharesHeld, setSharesHeld] = useState("");
     const [shareClass, setShareClass] = useState("Equity");
     const [allotmentDate, setAllotmentDate] = useState("");
+    const [folioNo, setFolioNo] = useState("");
 
     // Transfer Form
     const [fromMember, setFromMember] = useState("");
@@ -66,17 +68,34 @@ const StatutoryRegisters = () => {
     const [rocId, setRocId] = useState("");
     const [createdDate, setCreatedDate] = useState("");
 
+    // Dynamic Company Info
+    const [companyInfo, setCompanyInfo] = useState({
+        name: "GrocMed Private Limited",
+        cin: "U51909MH2023PTC389012",
+        incorporated: "01 Jan 2023",
+        authCapital: 1000000
+    });
+    const [showEditCompany, setShowEditCompany] = useState(false);
+    const [editInfo, setEditInfo] = useState({ ...companyInfo });
+
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [memRes, dirRes, chargeRes] = await Promise.all([
+            const [memRes, dirRes, chargeRes, settingsRes] = await Promise.all([
                 accountingApi.getShareholders(),
                 accountingApi.getDirectors(),
                 accountingApi.getCharges(),
+                adminApi.getSettings()
             ]);
             setMembers(memRes?.data || []);
             setDirectors(dirRes?.data || []);
             setCharges(chargeRes?.data || []);
+
+            // Sync with global settings if available
+            if (settingsRes?.data?.companyInfo) {
+                setCompanyInfo(settingsRes.data.companyInfo);
+                setEditInfo(settingsRes.data.companyInfo);
+            }
         } catch (error) {
             console.error(error);
             toast.error("Failed to load statutory records");
@@ -92,34 +111,46 @@ const StatutoryRegisters = () => {
     const handleExportROC = () => {
         toast.loading("Generating ROC report...", { id: "roc-export" });
 
-        let dataToExport = [];
+        let dataToExport: any[] = [];
         let filename = `Statutory_Register_${view}`;
 
         if (view === "members" || view === "transfers") {
-            dataToExport = members.map(s => ({
-                "Folio No": s.folioNumber,
-                Name: s.name,
-                PAN: s.pan,
-                "Date of Allotment": new Date(s.allotmentDate).toLocaleDateString(),
-                "Shares Held": s.sharesHeld,
-                "Value (₹10/share)": s.sharesHeld * 10
-            }));
+            dataToExport = members.map(s => {
+                const folio = s.folio || s.folioNo || s.folioNumber || "N/A";
+                const date = s.allotmentDate ? new Date(s.allotmentDate).toLocaleDateString() : "—";
+                const value = s.totalValue || (Number(s.sharesHeld || 0) * 10);
+                
+                return {
+                    "Folio No": folio,
+                    "Name of Member": s.name || "—",
+                    PAN: s.pan || "—",
+                    "Class of Shares": s.class || "Equity",
+                    "Date of Allotment": date,
+                    "Shares Held": s.sharesHeld || 0,
+                    "Total Value (₹)": value
+                };
+            });
         } else if (view === "directors") {
             dataToExport = directors.map(d => ({
-                DIN: d.din,
-                Name: d.name,
-                Designation: d.designation,
-                "Date of Appointment": new Date(d.appointmentDate).toLocaleDateString(),
-                PAN: d.pan
+                DIN: d.din || "—",
+                Name: d.name || "—",
+                Designation: d.designation || "Director",
+                "Date of Appointment": d.appointed ? new Date(d.appointed).toLocaleDateString() : "—",
+                Nationality: d.nationality || "Indian",
+                "Shareholding (%)": d.shareholding || "0%"
             }));
         } else if (view === "charges") {
             dataToExport = charges.map(c => ({
-                "Charge ID": c.chargeId,
-                "Charge Holder": c.chargeHolder,
-                Amount: c.amount,
-                "Creation Date": new Date(c.creationDate).toLocaleDateString(),
-                Status: c.status
+                "Charge ID": c.chargeId || "—",
+                "Charge Holder": c.chargeHolder || "—",
+                Amount: c.amount || 0,
+                "Creation Date": c.creationDate ? new Date(c.creationDate).toLocaleDateString() : "—",
+                Status: c.status || "Active"
             }));
+        }
+
+        if (dataToExport.length === 0) {
+            return toast.error("No data found to export", { id: "roc-export" });
         }
 
         exportToCSV(dataToExport, filename);
@@ -128,15 +159,18 @@ const StatutoryRegisters = () => {
 
     // --- Save Handlers ---
     const handleSaveMember = async () => {
-        if (!name || !pan || !sharesHeld || !allotmentDate) return toast.error("Please fill all fields");
+        if (!name || !pan || !sharesHeld || !allotmentDate || !folioNo) return toast.error("Please fill all fields (Folio No. is required)");
         toast.loading("Adding shareholder...", { id: "add-member" });
+        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+        if (!panRegex.test(pan)) return toast.error("Invalid PAN format (e.g. ABCDE1234F)");
+        
         try {
             await accountingApi.createShareholder({
-                name, pan, sharesHeld: Number(sharesHeld), class: shareClass, allotmentDate: new Date(allotmentDate).toISOString()
+                name, pan, folioNo, sharesHeld: Number(sharesHeld), class: shareClass, allotmentDate: new Date(allotmentDate).toISOString()
             });
             toast.success("Shareholder added to register!", { id: "add-member" });
             setShowAddMember(false);
-            setName(""); setPan(""); setSharesHeld(""); setAllotmentDate("");
+            setName(""); setPan(""); setSharesHeld(""); setAllotmentDate(""); setFolioNo("");
             fetchData();
         } catch (error: any) {
             toast.error(error?.response?.data?.message || "Failed to add shareholder", { id: "add-member" });
@@ -149,9 +183,12 @@ const StatutoryRegisters = () => {
 
         toast.loading("Processing share transfer...", { id: "transfer-shares" });
         try {
+            const from = members.find(m => m._id === fromMember);
+            const to = members.find(m => m._id === toMember);
+            
             await accountingApi.transferShares({
-                fromFolio: members.find(m => m._id === fromMember)?.folio, // Folio string is required by backend
-                toFolio: members.find(m => m._id === toMember)?.folio,
+                fromFolio: from?.folio || from?.folioNo || from?.folioNumber,
+                toFolio: to?.folio || to?.folioNo || to?.folioNumber,
                 noOfShares: Number(transferShares)
             });
             toast.success("Share transfer recorded!", { id: "transfer-shares" });
@@ -166,6 +203,8 @@ const StatutoryRegisters = () => {
     const handleSaveDirector = async () => {
         if (!din || !dirName || !appointed) return toast.error("Please fill required fields (DIN, Name, Date)");
         toast.loading("Recording Director...", { id: "add-dir" });
+        if (din.length !== 8) return toast.error("DIN must be exactly 8 digits");
+        
         try {
             await accountingApi.createDirector({
                 din, name: dirName, designation, appointed: new Date(appointed).toISOString(), shareholding
@@ -196,8 +235,24 @@ const StatutoryRegisters = () => {
     };
 
 
-    const totalCapital = members.reduce((a, m) => a + (m.totalValue || 0), 0);
-    const totalShares = members.reduce((a, m) => a + (m.sharesHeld || 0), 0);
+    const handleSaveCompanyInfo = async () => {
+        try {
+            toast.loading("Updating company profile...", { id: "update-info" });
+            const settingsRes = await adminApi.getSettings();
+            await adminApi.updateSettings({
+                ...settingsRes.data,
+                companyInfo: editInfo
+            });
+            setCompanyInfo(editInfo);
+            setShowEditCompany(false);
+            toast.success("Company profile updated!", { id: "update-info" });
+        } catch (error) {
+            toast.error("Failed to update company profile");
+        }
+    };
+
+    const totalCapital = members.reduce((a, m) => a + (m.totalValue || (Number(m.sharesHeld || 0) * 10)), 0);
+    const totalShares = members.reduce((a, m) => a + (Number(m.sharesHeld || 0)), 0);
 
     const tabs: [StatView, string, any][] = [
         ["members", "Register of Members", Users],
@@ -221,20 +276,47 @@ const StatutoryRegisters = () => {
                 </div>
             </div>
 
+            {/* Educational Info Banner */}
+            <div className="bg-slate-50/50 border border-slate-100 rounded-3xl p-5 flex items-start gap-4 animate-in slide-in-from-top-4 duration-500">
+                <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm text-slate-600 shrink-0">
+                    <Info className="w-5 h-5" />
+                </div>
+                <div>
+                    <p className="text-sm font-bold text-slate-900 uppercase tracking-tight">
+                        {view === "members" && "Register of Members (MGT-1)"}
+                        {view === "directors" && "Register of Directors & KMP"}
+                        {view === "transfers" && "Share Transfer Records (SH-4)"}
+                        {view === "charges" && "Register of Charges (CHG-7)"}
+                    </p>
+                    <p className="text-xs text-slate-700/80 mt-1 leading-relaxed max-w-3xl">
+                        {view === "members" && "Legally required record of every person who is a shareholder of the company. It tracks their folio numbers, share classes (Equity/Preference), and allotment history."}
+                        {view === "directors" && "Maintains details of the company's Board of Directors. It tracks their DIN (Director Identification Number), residential address, and appointment/resignation dates."}
+                        {view === "transfers" && "Records the buying and selling of shares between members. This log is essential for generating the Annual Return (MGT-7) for the ROC."}
+                        {view === "charges" && "Required record of all loans or security interests created on the company's assets. Every charge holder and the amount secured must be disclosed here."}
+                    </p>
+                </div>
+            </div>
+
             {/* Company Info Card */}
-            <Card className="p-6 border-none shadow-lg rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 text-white">
+            <Card className="p-6 border-none shadow-lg rounded-3xl bg-gradient-to-br from-slate-800 to-slate-900 text-white relative group">
+                <Button 
+                    onClick={() => setShowEditCompany(true)}
+                    className="absolute top-6 right-6 p-2 rounded-xl bg-white/10 hover:bg-white/20 border-none h-auto transition-all"
+                >
+                    <Settings className="w-4 h-4 text-white" />
+                </Button>
                 <div className="flex items-center gap-4 mb-4">
                     <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center">
                         <Building2 className="w-8 h-8 text-white" />
                     </div>
                     <div>
-                        <h3 className="font-black text-2xl text-white">GrocMed Private Limited</h3>
-                        <p className="text-slate-300 text-sm font-normal mt-0.5">CIN: U51909MH2023PTC389012 | Incorporated: 01 Jan 2023</p>
+                        <h3 className="font-black text-2xl text-white">{companyInfo.name}</h3>
+                        <p className="text-slate-300 text-sm font-normal mt-0.5">CIN: {companyInfo.cin} | Incorporated: {companyInfo.incorporated}</p>
                     </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                     {[
-                        { label: "Authorized Capital", value: "₹10,00,000" },
+                        { label: "Authorized Capital", value: `₹${Number(companyInfo.authCapital).toLocaleString()}` },
                         { label: "Paid-up Capital", value: `₹${totalCapital.toLocaleString()}` },
                         { label: "Total Shareholders", value: members.length.toString() },
                         { label: "Total Shares Issued", value: totalShares.toLocaleString() },
@@ -284,25 +366,31 @@ const StatutoryRegisters = () => {
                                     <tr><td colSpan={8} className="text-center py-8 text-gray-400">Loading shareholders...</td></tr>
                                 ) : members.length === 0 ? (
                                     <tr><td colSpan={8} className="text-center py-8 text-gray-400">No shareholders found.</td></tr>
-                                ) : members.map(m => (
-                                    <tr key={m.folio} className="hover:bg-gray-50/30 transition-colors">
-                                        <td className="px-6 py-4 text-sm font-mono font-bold text-gray-700">{m.folio}</td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2.5">
-                                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center text-slate-700 font-bold text-sm border border-slate-100 flex-shrink-0">
-                                                    {m.name.charAt(0)}
+                                ) : members.map((m, idx) => {
+                                    const displayFolio = m.folio || m.folioNo || m.folioNumber || `F-${idx + 1}`;
+                                    const displayValue = m.totalValue || (Number(m.sharesHeld || 0) * 10);
+                                    const displayDate = m.allotmentDate ? new Date(m.allotmentDate).toLocaleDateString() : "—";
+                                    
+                                    return (
+                                        <tr key={m._id || idx} className="hover:bg-gray-50/30 transition-colors">
+                                            <td className="px-6 py-4 text-sm font-mono font-bold text-gray-700">{displayFolio}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center text-slate-700 font-bold text-sm border border-slate-100 flex-shrink-0">
+                                                        {(m.name || "M").charAt(0)}
+                                                    </div>
+                                                    <span className="text-sm font-semibold text-gray-900">{m.name || "—"}</span>
                                                 </div>
-                                                <span className="text-sm font-semibold text-gray-900">{m.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm font-mono text-gray-500">{m.pan}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-gray-900">{m.sharesHeld?.toLocaleString()}</td>
-                                        <td className="px-6 py-4"><Badge className="bg-slate-100 text-slate-700 border-slate-200 text-xs font-normal px-2 py-0.5 rounded-lg">{m.class}</Badge></td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">{new Date(m.allotmentDate).toLocaleDateString()}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-gray-900">₹{m.totalValue?.toLocaleString()}</td>
-                                        <td className="px-6 py-4"><Badge className="bg-green-50 text-green-700 border-green-200 text-xs font-semibold px-2.5 py-1 rounded-lg">{m.status}</Badge></td>
-                                    </tr>
-                                ))}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm font-mono text-gray-500">{m.pan || "—"}</td>
+                                            <td className="px-6 py-4 text-sm font-bold text-gray-900">{(m.sharesHeld || 0).toLocaleString()}</td>
+                                            <td className="px-6 py-4"><Badge className="bg-slate-100 text-slate-700 border-slate-200 text-xs font-normal px-2 py-0.5 rounded-lg">{m.class || "Equity"}</Badge></td>
+                                            <td className="px-6 py-4 text-sm text-gray-600">{displayDate}</td>
+                                            <td className="px-6 py-4 text-sm font-bold text-gray-900">₹{displayValue.toLocaleString()}</td>
+                                            <td className="px-6 py-4"><Badge className="bg-green-50 text-green-700 border-green-200 text-xs font-semibold px-2.5 py-1 rounded-lg">{m.status || "Active"}</Badge></td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -332,22 +420,22 @@ const StatutoryRegisters = () => {
                                     <tr><td colSpan={7} className="text-center py-8 text-gray-400">Loading directors...</td></tr>
                                 ) : directors.length === 0 ? (
                                     <tr><td colSpan={7} className="text-center py-8 text-gray-400">No directors found on register.</td></tr>
-                                ) : directors.map(d => (
-                                    <tr key={d.din} className="hover:bg-gray-50/30 transition-colors">
-                                        <td className="px-6 py-4 text-sm font-mono font-bold text-gray-700">{d.din}</td>
+                                ) : directors.map((d, idx) => (
+                                    <tr key={d.din || idx} className="hover:bg-gray-50/30 transition-colors">
+                                        <td className="px-6 py-4 text-sm font-mono font-bold text-gray-700">{d.din || "—"}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2.5">
                                                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center text-blue-700 font-bold text-sm border border-blue-100">
-                                                    {d.name.charAt(0)}
+                                                    {(d.name || "D").charAt(0)}
                                                 </div>
-                                                <span className="text-sm font-semibold text-gray-900">{d.name}</span>
+                                                <span className="text-sm font-semibold text-gray-900">{d.name || "—"}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">{d.designation}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">{new Date(d.appointed).toLocaleDateString()}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">{d.nationality}</td>
-                                        <td className="px-6 py-4 text-sm font-bold text-gray-900">{d.shareholding}</td>
-                                        <td className="px-6 py-4"><Badge className="bg-green-50 text-green-700 border-green-200 text-xs font-semibold px-2.5 py-1 rounded-lg">{d.status}</Badge></td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">{d.designation || "Director"}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">{d.appointed ? new Date(d.appointed).toLocaleDateString() : "—"}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">{d.nationality || "Indian"}</td>
+                                        <td className="px-6 py-4 text-sm font-bold text-gray-900">{d.shareholding || "0%"}</td>
+                                        <td className="px-6 py-4"><Badge className="bg-green-50 text-green-700 border-green-200 text-xs font-semibold px-2.5 py-1 rounded-lg">{d.status || "Active"}</Badge></td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -424,13 +512,19 @@ const StatutoryRegisters = () => {
                         <DialogTitle className="text-2xl font-black text-gray-900">Add Shareholder</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                        <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Full Name</p>
-                            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Name" className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Folio Number</p>
+                                <Input value={folioNo} onChange={e => setFolioNo(e.target.value)} placeholder="e.g. F-101" required className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">PAN Number</p>
+                                <Input value={pan} onChange={e => setPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" maxLength={10} required className="h-12 rounded-2xl border-gray-100 bg-gray-50/50 uppercase" />
+                            </div>
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">PAN Number</p>
-                            <Input value={pan} onChange={e => setPan(e.target.value.toUpperCase())} placeholder="ABCDE1234F" maxLength={10} className="h-12 rounded-2xl border-gray-100 bg-gray-50/50 uppercase" />
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Full Name</p>
+                            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Name" required className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -472,13 +566,25 @@ const StatutoryRegisters = () => {
                     <div className="space-y-4 py-4">
                         <Select value={fromMember} onValueChange={setFromMember}>
                             <SelectTrigger className="h-12 rounded-2xl"><SelectValue placeholder="From Folio" /></SelectTrigger>
-                            <SelectContent>{members.filter(m => m.sharesHeld > 0).map(m => (<SelectItem key={m._id} value={m._id}>{m.folio}</SelectItem>))}</SelectContent>
+                            <SelectContent>
+                                {members.filter(m => (m.sharesHeld || 0) > 0).map(m => (
+                                    <SelectItem key={m._id} value={m._id}>
+                                        {m.folio || m.folioNo || m.folioNumber} ({m.name})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
                         </Select>
                         <Select value={toMember} onValueChange={setToMember}>
                             <SelectTrigger className="h-12 rounded-2xl"><SelectValue placeholder="To Folio" /></SelectTrigger>
-                            <SelectContent>{members.map(m => (<SelectItem key={m._id} value={m._id}>{m.folio}</SelectItem>))}</SelectContent>
+                            <SelectContent>
+                                {members.map(m => (
+                                    <SelectItem key={m._id} value={m._id}>
+                                        {m.folio || m.folioNo || m.folioNumber} ({m.name})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
                         </Select>
-                        <Input type="number" value={transferShares} onChange={e => setTransferShares(e.target.value)} placeholder="Shares" className="h-12 rounded-2xl" />
+                        <Input type="number" value={transferShares} onChange={e => setTransferShares(e.target.value)} placeholder="No. of Shares to Transfer" min="1" required className="h-12 rounded-2xl" />
                     </div>
                     <DialogFooter className="gap-3">
                         <Button onClick={handleSaveTransfer} className="flex-1 h-12 rounded-2xl bg-slate-800 text-white">Record</Button>
@@ -493,8 +599,8 @@ const StatutoryRegisters = () => {
                         <DialogTitle className="text-2xl font-black text-gray-900">Record Director</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                        <Input value={din} onChange={e => setDin(e.target.value)} placeholder="DIN" className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
-                        <Input value={dirName} onChange={e => setDirName(e.target.value)} placeholder="Director Name" className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                        <Input value={din} onChange={e => setDin(e.target.value)} placeholder="DIN (8 digits)" maxLength={8} required className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                        <Input value={dirName} onChange={e => setDirName(e.target.value)} placeholder="Director Name" required className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
                         <Select value={designation} onValueChange={setDesignation}>
                             <SelectTrigger className="h-12 rounded-2xl border-gray-100 bg-gray-50/50"><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -535,6 +641,38 @@ const StatutoryRegisters = () => {
                 </DialogContent>
             </Dialog>
 
+            {/* Modal: Edit Company Profile */}
+            <Dialog open={showEditCompany} onOpenChange={setShowEditCompany}>
+                <DialogContent className="max-w-md rounded-[32px] p-8 border-none shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black text-gray-900">Company Profile</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Company Name</p>
+                            <Input value={editInfo.name} onChange={e => setEditInfo({ ...editInfo, name: e.target.value })} className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">CIN Number</p>
+                            <Input value={editInfo.cin} onChange={e => setEditInfo({ ...editInfo, cin: e.target.value.toUpperCase() })} className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Authorized Capital</p>
+                                <Input type="number" value={editInfo.authCapital} onChange={e => setEditInfo({ ...editInfo, authCapital: Number(e.target.value) })} className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Inc. Date</p>
+                                <Input value={editInfo.incorporated} onChange={e => setEditInfo({ ...editInfo, incorporated: e.target.value })} className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-3">
+                        <Button variant="outline" onClick={() => setShowEditCompany(false)} className="flex-1 h-12 rounded-2xl border-gray-100">Cancel</Button>
+                        <Button onClick={handleSaveCompanyInfo} className="flex-1 h-12 rounded-2xl bg-slate-800 text-white font-normal text-xs uppercase tracking-widest">Update Profile</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

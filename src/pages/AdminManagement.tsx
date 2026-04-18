@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Shield, Edit2, ShieldAlert, UserCheck, Loader2, Trash2 } from "lucide-react";
+import { Search, Plus, Edit2, Loader2, Trash2 } from "lucide-react";
 import { adminApi } from "@/api/adminApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -150,42 +150,7 @@ const AdminManagement = () => {
         </Button>
       </div>
 
-      {/* Stats - Grid layout */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-6 border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100 group hover:shadow-md transition-all">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Shield className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-[10px] font-normal text-gray-400 uppercase tracking-widest">Ownership</p>
-              <p className="text-xl font-normal text-gray-900">{admins.filter((a: any) => a.role === 'super_admin').length} Super Admins</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-6 border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100 group hover:shadow-md transition-all">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <UserCheck className="w-6 h-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-[10px] font-normal text-gray-400 uppercase tracking-widest">Active System</p>
-              <p className="text-xl font-normal text-gray-900">{admins.filter((a: any) => a.isActive).length} Active</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="p-6 border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100 group hover:shadow-md transition-all">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <ShieldAlert className="w-6 h-6 text-accent" />
-            </div>
-            <div>
-              <p className="text-[10px] font-normal text-gray-400 uppercase tracking-widest">Total</p>
-              <p className="text-xl font-normal text-gray-900">{admins.length} Total Users</p>
-            </div>
-          </div>
-        </Card>
-      </div>
+
 
       {/* Search Bar */}
       <Card className="p-4 sm:p-5 border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100">

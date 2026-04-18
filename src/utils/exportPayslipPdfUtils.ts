@@ -50,16 +50,19 @@ export const downloadPayslipPDF = (employeeSlip: any, monthYear: string, action:
     // Slip Info (Right)
     const addMetaRow = (key: string, value: string, y: number) => {
         doc.setFont("helvetica", "bold");
-        doc.text(key, pageWidth - 65, y);
+        doc.text(key, pageWidth - 80, y);
         doc.setFont("helvetica", "normal");
-        doc.text(value, pageWidth - 14, y, { align: "right" });
+        doc.text(String(value), pageWidth - 14, y, { align: "right" });
     };
 
     doc.setTextColor(textDark[0], textDark[1], textDark[2]);
     addMetaRow("Pay Period:", monthYear || "N/A", yPos);
-    addMetaRow("Status:", employeeSlip.status || "Generated", yPos + 6);
+    addMetaRow("Status:", employeeSlip.status || "Posted", yPos + 6);
+    addMetaRow("Bank:", employeeSlip.bankName || "—", yPos + 12);
+    addMetaRow("A/C No:", employeeSlip.accountNumber ? `****${employeeSlip.accountNumber.slice(-4)}` : "—", yPos + 18);
+    addMetaRow("IFSC:", employeeSlip.ifsc || "—", yPos + 24);
 
-    yPos += 24;
+    yPos += 30;
 
     // --- Divider ---
     doc.setDrawColor(200, 200, 200);

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import {
     ShoppingBag, Building2, Plus, Search,
-    Download, CheckCircle2, Clock,
+    Download, CheckCircle2, Clock, Info
 } from "lucide-react";
 import { accountingApi } from "@/api/accountingApi";
 import { exportToCSV } from "@/utils/exportUtils";
@@ -85,19 +85,23 @@ const Purchases = () => {
 
         try {
             const payload = {
-                vendorName,
-                vendorGSTIN: vendorGSTIN || "URD", // Unregistered Dealer if empty
+                supplierName: vendorName,
+                gstin: vendorGSTIN || "URD", // Unregistered Dealer if empty
                 invoiceNo,
-                billingDate: new Date(billingDate).toISOString(),
-                totalTaxable: Number(taxableAmt),
-                totalGST: Number(gstAmt),
-                grandTotal: Number(taxableAmt) + Number(gstAmt),
-                status: "Pending", // Default 
+                date: new Date(billingDate).toISOString(),
+                taxableTotal: Number(taxableAmt),
+                taxBreakup: {
+                    cgst: Number(gstAmt) / 2,
+                    sgst: Number(gstAmt) / 2,
+                    igst: 0
+                },
+                totalAmount: Number(taxableAmt) + Number(gstAmt),
+                status: "Unpaid", // Match allowed enum in backend
                 items: [{
-                    productId: "60b9b0b9b0b9b0b9b0b9b0b9", // Dummy Object ID for system requirements
+                    productId: "645934a3f1234a56b7890cde", // Placeholder or fetch a real product
                     quantity: 1,
-                    unitPrice: Number(taxableAmt),
-                    taxRate: 18
+                    rate: Number(taxableAmt),
+                    taxableAmount: Number(taxableAmt)
                 }]
             };
 
@@ -117,25 +121,29 @@ const Purchases = () => {
     // --- Derived Data for Vendors View & Dashboard ---
     const vendorsMap = new Map<string, any>();
     purchases.forEach(p => {
-        if (!vendorsMap.has(p.vendorName)) {
-            vendorsMap.set(p.vendorName, { name: p.vendorName, gstin: p.vendorGSTIN, outstanding: 0, total: 0, purchases: 0, status: "Active" });
+        const sName = p.supplierName || p.vendorName || "Unknown";
+        if (!vendorsMap.has(sName)) {
+            vendorsMap.set(sName, { name: sName, gstin: p.gstin || p.vendorGSTIN, outstanding: 0, total: 0, purchases: 0, status: "Active" });
         }
-        const v = vendorsMap.get(p.vendorName);
-        v.total += p.grandTotal;
-        if (p.status !== "Paid") v.outstanding += p.grandTotal;
+        const v = vendorsMap.get(sName);
+        v.total += (p.totalAmount || p.grandTotal || 0);
+        if (p.status !== "Paid") v.outstanding += (p.totalAmount || p.grandTotal || 0);
         v.purchases += 1;
     });
     const vendors = Array.from(vendorsMap.values());
 
-    const totalPurchases = purchases.reduce((a, p) => a + p.grandTotal, 0);
-    const totalITC = purchases.reduce((a, p) => a + p.totalGST, 0);
-    const pendingPayments = purchases.filter(p => p.status !== "Paid").reduce((a, p) => a + p.grandTotal, 0);
+    const totalPurchases = purchases.reduce((a, p) => a + (p.totalAmount || p.grandTotal || 0), 0);
+    const totalITC = purchases.reduce((a, p) => {
+        const tax = p.taxBreakup ? ((p.taxBreakup.cgst || 0) + (p.taxBreakup.sgst || 0) + (p.taxBreakup.igst || 0)) : (p.totalGST || 0);
+        return a + tax;
+    }, 0);
+    const pendingPayments = purchases.filter(p => p.status !== "Paid").reduce((a, p) => a + (p.totalAmount || p.grandTotal || 0), 0);
 
     const getStatusBadge = (status: string) => {
         const map: Record<string, string> = {
             Paid: "bg-green-50 text-green-700 border-green-200",
-            Pending: "bg-yellow-50 text-yellow-700 border-yellow-200",
-            Partial: "bg-blue-50 text-blue-700 border-blue-200",
+            Unpaid: "bg-yellow-50 text-yellow-700 border-yellow-200",
+            "Partially Paid": "bg-blue-50 text-blue-700 border-blue-200",
         };
         return map[status] || "bg-gray-50 text-gray-700 border-gray-200";
     };
@@ -164,19 +172,38 @@ const Purchases = () => {
             {/* Summary Cards */}
             <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    { label: "Total Purchases", value: `₹${(totalPurchases / 1000).toFixed(1)}k`, color: "from-orange-500 to-accent", ring: "ring-orange-100", bg: "from-orange-50", icon: ShoppingBag },
-                    { label: "Input Tax Credit", value: `₹${(totalITC / 1000).toFixed(1)}k`, color: "from-blue-500 to-blue-600", ring: "ring-blue-100", bg: "from-blue-50", icon: CheckCircle2 },
-                    { label: "Pending Payments", value: `₹${(pendingPayments / 1000).toFixed(1)}k`, color: "from-yellow-500 to-yellow-600", ring: "ring-yellow-100", bg: "from-yellow-50", icon: Clock },
-                    { label: "Active Vendors", value: vendors.filter(v => v.status === "Active").length.toString(), color: "from-purple-500 to-purple-600", ring: "ring-purple-100", bg: "from-purple-50", icon: Building2 },
-                ].map(({ label, value, color, ring, bg, icon: Icon }) => (
+                    { label: "Total Purchased Value", value: `₹${(totalPurchases).toLocaleString()}`, color: "from-orange-500 to-accent", ring: "ring-orange-100", bg: "from-orange-50", icon: ShoppingBag, desc: "Sum of all bills recorded" },
+                    { label: "GST Credit (ITC)", value: `₹${(totalITC).toLocaleString()}`, color: "from-blue-500 to-blue-600", ring: "ring-blue-100", bg: "from-blue-50", icon: CheckCircle2, desc: "Tax you can claim back" },
+                    { label: "Unpaid Bills", value: `₹${(pendingPayments).toLocaleString()}`, color: "from-yellow-500 to-yellow-600", ring: "ring-yellow-100", bg: "from-yellow-50", icon: Clock, desc: "Money you owe to vendors" },
+                    { label: "Total Vendors", value: vendors.length.toString(), color: "from-purple-500 to-purple-600", ring: "ring-purple-100", bg: "from-purple-50", icon: Building2, desc: "Current suppliers" },
+                ].map(({ label, value, color, ring, bg, icon: Icon, desc }) => (
                     <Card key={label} className={`p-5 border-none shadow-lg rounded-3xl bg-gradient-to-br ${bg} via-white to-${bg}/30 ${ring} ring-1`}>
                         <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${color} flex items-center justify-center mb-4 shadow-lg`}>
                             <Icon className="w-6 h-6 text-white" />
                         </div>
-                        <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">{label}</p>
+                        <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">{label}</p>
                         <p className={`text-2xl font-black bg-gradient-to-r ${color} bg-clip-text text-transparent`}>{value}</p>
+                        <p className="text-[10px] text-gray-400 mt-1.5 font-medium">{desc}</p>
                     </Card>
                 ))}
+            </div>
+
+            <div className="bg-orange-50/50 border border-orange-100 rounded-3xl p-5 flex items-start gap-4 animate-in slide-in-from-top-4 duration-500">
+                <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm text-orange-600 shrink-0">
+                    <Info className="w-5 h-5" />
+                </div>
+                <div>
+                    <p className="text-sm font-bold text-orange-900 uppercase tracking-tight">
+                        {activeView === "invoices" ? "Purchase Invoices & ITC Tracking" : "Vendor Ledger & Ageing"}
+                    </p>
+                    <p className="text-xs text-orange-700/80 mt-1 leading-relaxed max-w-3xl">
+                        {activeView === "invoices" ? (
+                            "Every bill from your suppliers must be recorded here to claim Input Tax Credit (ITC). Recording purchases helps you track your business expenses and offset the GST collected on sales."
+                        ) : (
+                            "Monitor your relationships with suppliers. Track total purchased volume per vendor and manage outstanding payables to ensure timely payments and maintain a healthy credit cycle."
+                        )}
+                    </p>
+                </div>
             </div>
 
             {/* Tab Toggle */}
@@ -236,12 +263,14 @@ const Purchases = () => {
                                     .map(p => (
                                         <tr key={p._id} className="hover:bg-gray-50/30 transition-colors">
                                             <td className="px-5 py-4 text-sm font-mono font-bold text-gray-700">{p.invoiceNo}</td>
-                                            <td className="px-5 py-4 text-sm text-gray-600">{new Date(p.billingDate).toLocaleDateString()}</td>
-                                            <td className="px-5 py-4 text-sm font-semibold text-gray-900">{p.vendorName}</td>
-                                            <td className="px-5 py-4 text-xs font-mono text-gray-400">{p.vendorGSTIN || "N/A"}</td>
-                                            <td className="px-5 py-4 text-sm text-gray-700">₹{p.totalTaxable?.toLocaleString()}</td>
-                                            <td className="px-5 py-4 text-sm text-blue-600 font-semibold">₹{p.totalGST?.toLocaleString()}</td>
-                                            <td className="px-5 py-4 text-sm font-bold text-gray-900">₹{p.grandTotal?.toLocaleString()}</td>
+                                            <td className="px-5 py-4 text-sm text-gray-600">{new Date(p.date || p.billingDate).toLocaleDateString()}</td>
+                                            <td className="px-5 py-4 text-sm font-semibold text-gray-900">{p.supplierName || p.vendorName}</td>
+                                            <td className="px-5 py-4 text-xs font-mono text-gray-400">{p.gstin || p.vendorGSTIN || "N/A"}</td>
+                                            <td className="px-5 py-4 text-sm text-gray-700">₹{(p.taxableTotal || p.totalTaxable)?.toLocaleString()}</td>
+                                            <td className="px-5 py-4 text-sm text-blue-600 font-semibold">
+                                                ₹{(p.taxBreakup ? (p.taxBreakup.cgst + p.taxBreakup.sgst + p.taxBreakup.igst) : (p.totalGST || 0))?.toLocaleString()}
+                                            </td>
+                                            <td className="px-5 py-4 text-sm font-bold text-gray-900">₹{(p.totalAmount || p.grandTotal)?.toLocaleString()}</td>
                                             <td className="px-5 py-4">
                                                 <Badge className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${getStatusBadge(p.status)}`}>{p.status}</Badge>
                                             </td>
@@ -251,7 +280,7 @@ const Purchases = () => {
                             <tfoot>
                                 <tr className="bg-gray-50/50 border-t border-gray-100">
                                     <td colSpan={4} className="px-5 py-4 text-sm font-black text-gray-900 uppercase tracking-wider">Totals</td>
-                                    <td className="px-5 py-4 text-sm font-black text-gray-900">₹{purchases.reduce((a, p) => a + (p.totalTaxable || 0), 0).toLocaleString()}</td>
+                                    <td className="px-5 py-4 text-sm font-black text-gray-900">₹{purchases.reduce((a, p) => a + (p.taxableTotal || p.totalTaxable || 0), 0).toLocaleString()}</td>
                                     <td className="px-5 py-4 text-sm font-black text-blue-600">₹{totalITC.toLocaleString()}</td>
                                     <td className="px-5 py-4 text-sm font-black text-gray-900">₹{totalPurchases.toLocaleString()}</td>
                                     <td></td>

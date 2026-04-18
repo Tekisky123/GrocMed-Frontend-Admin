@@ -11,21 +11,62 @@ const API_ROUTES = {
     REPORTS: '/api/admin/accounting-reports'
 };
 
+// ---- Interfaces ----
+export interface Ledger {
+    _id: string;
+    name: string;
+    group: "Asset" | "Liability" | "Equity" | "Revenue" | "Expense";
+    subGroup?: string;
+    openingBalance: number;
+    openingBalanceType: "Dr" | "Cr";
+    currentBalance: number;
+}
+
+export interface JournalEntry {
+    _id: string;
+    date: string;
+    voucherNo: string;
+    type: "Receipt" | "Payment" | "Journal" | "Contra";
+    narration: string;
+    entries: Array<{
+        ledgerId: string | Ledger;
+        debit: number;
+        credit: number;
+    }>;
+}
+
+export interface Employee {
+    _id: string;
+    name: string;
+    employeeId: string;
+    designation: string;
+    baseSalary: number;
+    accountNumber: string;
+    ifsc: string;
+    bankName: string;
+}
+
+export interface ApiResponse<T> {
+    success: boolean;
+    data: T;
+    message?: string;
+}
+
 export const accountingApi = {
     // ---- 1. Finance (Cash Book & Bank Book) ----
-    getLedgers: async () => {
+    getLedgers: async (): Promise<ApiResponse<Record<string, Ledger[]>>> => {
         const response = await axiosInstance.get(`${API_ROUTES.FINANCE}/ledgers`);
         return response.data;
     },
-    createLedger: async (data: any) => {
+    createLedger: async (data: Partial<Ledger>): Promise<ApiResponse<Ledger>> => {
         const response = await axiosInstance.post(`${API_ROUTES.FINANCE}/ledgers`, data);
         return response.data;
     },
-    getJournals: async (page = 1, limit = 50) => {
+    getJournals: async (page = 1, limit = 50): Promise<ApiResponse<JournalEntry[]>> => {
         const response = await axiosInstance.get(`${API_ROUTES.FINANCE}/journal?page=${page}&limit=${limit}`);
         return response.data;
     },
-    createJournalEntry: async (data: any) => {
+    createJournalEntry: async (data: Partial<JournalEntry>): Promise<ApiResponse<JournalEntry>> => {
         const response = await axiosInstance.post(`${API_ROUTES.FINANCE}/journal`, data);
         return response.data;
     },

@@ -20,8 +20,8 @@ export const orderApi = {
     },
 
     // Update order status (triggers notification)
-    updateOrderStatus: async (id: string, status: string) => {
-        const response = await axiosInstance.put(`/api/admin/order/updateStatus/${id}`, { status });
+    updateOrderStatus: async (id: string, status: string, deliveryPartnerId?: string) => {
+        const response = await axiosInstance.put(`/api/admin/order/updateStatus/${id}`, { status, deliveryPartnerId });
         return response.data;
     },
 };
@@ -30,6 +30,12 @@ export const orderApi = {
 export interface Order {
     _id: string;
     customer: {
+        _id: string;
+        name: string;
+        phone: string;
+        email?: string;
+    };
+    deliveryPartner?: {
         _id: string;
         name: string;
         phone: string;
@@ -44,6 +50,10 @@ export interface Order {
         _id: string;
     }>;
     totalAmount: number;
+    taxAmount?: number;
+    cgstAmount?: number;
+    sgstAmount?: number;
+    igstAmount?: number;
     orderStatus: 'Placed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
     paymentMethod: string;
     paymentStatus: string;

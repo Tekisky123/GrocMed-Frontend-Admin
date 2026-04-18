@@ -35,6 +35,7 @@ axiosInstance.interceptors.response.use(
             // Unauthorized - clear storage and redirect to login if not already there
             localStorage.removeItem("grocmed_token");
             localStorage.removeItem("auth_user");
+            localStorage.removeItem("auth_login_time");
             if (window.location.pathname !== "/login") {
                 window.location.href = "/login";
             }

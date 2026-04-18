@@ -20,9 +20,9 @@ import {
 } from "@/components/ui/dialog";
 import {
     Landmark, Wallet, BookOpen, Plus, TrendingUp, TrendingDown,
-    ArrowUpRight, ArrowDownLeft, Download
+    ArrowUpRight, ArrowDownLeft, Download, Info
 } from "lucide-react";
-import { accountingApi } from "@/api/accountingApi";
+import { accountingApi, Ledger, JournalEntry } from "@/api/accountingApi";
 import { exportToCSV } from "@/utils/exportUtils";
 
 type ActiveTab = "cash" | "bank" | "journal";
@@ -34,8 +34,8 @@ const Finance = () => {
     const [showLedgerModal, setShowLedgerModal] = useState(false);
 
     // --- Dynamic State ---
-    const [ledgers, setLedgers] = useState<any[]>([]);
-    const [journals, setJournals] = useState<any[]>([]);
+    const [ledgers, setLedgers] = useState<Ledger[]>([]);
+    const [journals, setJournals] = useState<JournalEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Form State: Cash Entry
@@ -67,9 +67,9 @@ const Finance = () => {
             ]);
 
             // Flatten the grouped ledgers for simple dropdown use
-            const flatLedgers: any[] = [];
+            const flatLedgers: Ledger[] = [];
             if (ledgerRes?.data) {
-                Object.values(ledgerRes.data).forEach((groupArray: any) => {
+                Object.values(ledgerRes.data).forEach((groupArray: Ledger[]) => {
                     flatLedgers.push(...groupArray);
                 });
             }
@@ -108,11 +108,13 @@ const Finance = () => {
     };
 
     const handleSaveEntry = async () => {
-        if (!cashNarration || !cashAmount || !cashCategory) return toast.error("Please fill all fields");
+        if (!cashAmount || Number(cashAmount) <= 0) return toast.error("Please enter a valid amount");
+        if (!cashCategory) return toast.error("Please select a category/account");
+        if (!cashNarration) return toast.error("Please enter a narration");
 
         try {
             // Find "Cash" Ledger. If it doesn't exist, we fallback
-            const cashLedger = ledgers.find(l => l.name.toLowerCase().includes('cash')) || ledgers[0];
+            const cashLedger = ledgers.find(l => (l.name || '').toLowerCase().includes('cash')) || ledgers[0];
 
             if (!cashLedger) return toast.error("No Cash Ledger found in system!");
 
@@ -187,8 +189,8 @@ const Finance = () => {
     };
 
     // Strict Ledger Identifiers
-    const cashLedgerIds = ledgers.filter(l => l.name.toLowerCase().includes('cash')).map(l => l._id);
-    const bankLedgerIds = ledgers.filter(l => l.name.toLowerCase().includes('bank') || l.subGroup === 'Bank').map(l => l._id);
+    const cashLedgerIds = ledgers.filter(l => (l.name || '').toLowerCase().includes('cash')).map(l => l._id);
+    const bankLedgerIds = ledgers.filter(l => (l.name || '').toLowerCase().includes('bank') || l.subGroup === 'Bank').map(l => l._id);
 
     // Filter Journal Registries
     const cashData = journals.filter(j => j.entries.some((e: any) => cashLedgerIds.includes(e.ledgerId?._id || e.ledgerId)));
@@ -202,8 +204,8 @@ const Finance = () => {
     let totalPayments = 0;
 
     journals.forEach(j => {
-        j.entries.forEach((e: any) => {
-            const entryLedgerId = e.ledgerId?._id || e.ledgerId;
+        j.entries.forEach((e) => {
+            const entryLedgerId = typeof e.ledgerId === 'string' ? e.ledgerId : e.ledgerId._id;
             if (cashLedgerIds.includes(entryLedgerId)) {
                 cashBalance += (e.debit - e.credit);  // Cash is an Asset (Debit normal)
                 if (e.debit > 0) totalReceipts += e.debit;
@@ -236,6 +238,25 @@ const Finance = () => {
                     >
                         <Plus className="w-4 h-4" /> New Entry
                     </Button>
+                </div>
+            </div>
+
+            {/* Educational Info Banner */}
+            <div className="bg-blue-50/50 border border-blue-100 rounded-3xl p-5 flex items-start gap-4 animate-in slide-in-from-top-4 duration-500">
+                <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm text-blue-600 shrink-0">
+                    <Info className="w-5 h-5" />
+                </div>
+                <div>
+                    <p className="text-sm font-bold text-blue-900">
+                        {activeTab === "cash" && "Cash Book Management"}
+                        {activeTab === "bank" && "Bank Reconciliation & Records"}
+                        {activeTab === "journal" && "Journal Vouchers (JV)"}
+                    </p>
+                    <p className="text-xs text-blue-700/80 mt-1 leading-relaxed max-w-2xl">
+                        {activeTab === "cash" && "Record daily cash receipts and payments. Every transaction here automatically updates your Cash-in-Hand ledger balance."}
+                        {activeTab === "bank" && "Track bank transactions, deposits, and electronic transfers. Use this to reconcile your physical bank statements with internal records."}
+                        {activeTab === "journal" && "Pass non-cash adjustments, depreciation entries, or corrections. JVs require a balanced Debit (Dr) and Credit (Cr) to maintain accounting integrity."}
+                    </p>
                 </div>
             </div>
 
@@ -272,17 +293,53 @@ const Finance = () => {
             </div>
 
             {/* Tab Switcher */}
-            <div className="flex gap-2 bg-gray-100/60 rounded-2xl p-1.5 w-fit">
-                {([["cash", "Cash Book", Wallet], ["bank", "Bank Book", Landmark], ["journal", "Journal", BookOpen]] as const).map(([key, label, Icon]) => (
-                    <button
-                        key={key}
-                        onClick={() => setActiveTab(key as ActiveTab)}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === key ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-                    >
-                        <Icon className="w-4 h-4" />
-                        {label}
-                    </button>
-                ))}
+            <div className="flex flex-col gap-4">
+                <div className="flex gap-2 bg-gray-100/60 rounded-2xl p-1.5 w-fit">
+                    {([["cash", "Cash in Hand", Wallet], ["bank", "Bank Accounts", Landmark], ["journal", "Adjustments", BookOpen]] as const).map(([key, label, Icon]) => (
+                        <button
+                            key={key}
+                            onClick={() => setActiveTab(key as ActiveTab)}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${activeTab === key ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                        >
+                            <Icon className="w-4 h-4" />
+                            {label}
+                        </button>
+                    ))}
+                </div>
+                
+                {activeTab === "cash" && (
+                    <div className="bg-green-50/50 border border-green-100 rounded-2xl p-4 flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm text-green-600">
+                            <Wallet className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-green-900">Cash in Hand Ledger</p>
+                            <p className="text-xs text-green-700/80 mt-0.5">Track every rupee available as physical cash. Record daily sales receipts or small expenses paid from the cash drawer here.</p>
+                        </div>
+                    </div>
+                )}
+                {activeTab === "bank" && (
+                    <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm text-blue-600">
+                            <Landmark className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-blue-900">Bank Transaction Register</p>
+                            <p className="text-xs text-blue-700/80 mt-0.5">Summary of all money moving through your bank accounts. Useful for reconciling your bank statements at the end of the month.</p>
+                        </div>
+                    </div>
+                )}
+                {activeTab === "journal" && (
+                    <div className="bg-purple-50/50 border border-purple-100 rounded-2xl p-4 flex items-start gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm text-purple-600">
+                            <BookOpen className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-purple-900">Accounting Adjustments (Journal)</p>
+                            <p className="text-xs text-purple-700/80 mt-0.5">Use this for entries that don't involve cash or bank—like calculating depreciation, correcting errors, or recording non-cash credit notes.</p>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Content Tabs */}
@@ -431,24 +488,24 @@ const Finance = () => {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Receipt">Receipt (Inflow)</SelectItem>
-                                    <SelectItem value="Payment">Payment (Outflow)</SelectItem>
+                                    <SelectItem value="Receipt">Money In (Receipt)</SelectItem>
+                                    <SelectItem value="Payment">Money Out (Payment)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Narration / Description</p>
-                            <Input value={cashNarration} onChange={(e) => setCashNarration(e.target.value)} placeholder="e.g. Cash Sales" className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Narration / Remarks</p>
+                            <Input value={cashNarration} onChange={(e) => setCashNarration(e.target.value)} placeholder="Reason for entry..." required className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
                         </div>
                         <div>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Amount (₹)</p>
-                            <Input type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="0.00" className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                            <Input type="number" value={cashAmount} onChange={(e) => setCashAmount(e.target.value)} placeholder="0.00" min="0.01" required className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Against Ledger (Category)</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Category (Income or Expense Side)</p>
                             <Select value={cashCategory} onValueChange={setCashCategory}>
                                 <SelectTrigger className="h-12 rounded-2xl border-gray-100 bg-gray-50/50">
-                                    <SelectValue placeholder="Select Ledger" />
+                                    <SelectValue placeholder="Where did this money come from / go to?" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {ledgers.map(l => (
@@ -475,7 +532,7 @@ const Finance = () => {
                     <div className="space-y-4 py-4">
                         <div>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Voucher Date</p>
-                            <Input type="date" value={jvDate} onChange={(e) => setJvDate(e.target.value)} className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                            <Input type="date" value={jvDate} onChange={(e) => setJvDate(e.target.value)} required className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
                         </div>
                         <div>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Debit Account</p>
@@ -505,11 +562,11 @@ const Finance = () => {
                         </div>
                         <div>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Amount (₹)</p>
-                            <Input type="number" value={jvAmount} onChange={(e) => setJvAmount(e.target.value)} placeholder="0.00" className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                            <Input type="number" value={jvAmount} onChange={(e) => setJvAmount(e.target.value)} placeholder="0.00" min="0.01" required className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
                         </div>
                         <div>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Narration</p>
-                            <Input value={jvNarration} onChange={(e) => setJvNarration(e.target.value)} placeholder="e.g. Depreciation adjusting entry" className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
+                            <Input value={jvNarration} onChange={(e) => setJvNarration(e.target.value)} placeholder="Reason..." required className="h-12 rounded-2xl border-gray-100 bg-gray-50/50" />
                         </div>
                     </div>
                     <DialogFooter className="gap-3">

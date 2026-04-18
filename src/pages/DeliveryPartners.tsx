@@ -174,25 +174,7 @@ const DeliveryPartners = () => {
         </Button>
       </div>
 
-      {/* Stats - Horizontal Scroll on Mobile */}
-      <div className="flex overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-4 gap-4 custom-scrollbar">
-        {[
-          { label: "Active Fleet", value: allPartners.length, color: "text-primary", icon: Truck },
-          { label: "On Duty", value: allPartners.filter(p => p.status === 'active').length, color: "text-green-600", icon: Zap },
-          { label: "Avg Rating", value: "4.8⭐", color: "text-accent", icon: Star },
-          { label: "Safety Score", value: "98%", color: "text-blue-500", icon: ShieldCheck }
-        ].map((stat, i) => (
-          <div key={i} className="flex-shrink-0 w-[180px] sm:w-auto p-5 rounded-3xl bg-white shadow-sm ring-1 ring-gray-100 group transition-all hover:shadow-md">
-            <div className="flex items-center justify-between mb-3">
-              <div className="p-2 bg-gray-50 rounded-lg group-hover:scale-110 transition-transform">
-                <stat.icon className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-            <p className="text-[10px] font-normal text-gray-400 uppercase tracking-widest">{stat.label}</p>
-            <p className={`text-2xl font-normal ${stat.color}`}>{stat.value}</p>
-          </div>
-        ))}
-      </div>
+
 
       {/* Search & Filter */}
       <Card className="p-4 sm:p-5 border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100">
