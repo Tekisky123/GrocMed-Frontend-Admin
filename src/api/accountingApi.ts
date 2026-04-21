@@ -80,6 +80,10 @@ export const accountingApi = {
         const response = await axiosInstance.post(API_ROUTES.PURCHASES, data);
         return response.data;
     },
+    updatePurchaseStatus: async (id: string, status: string) => {
+        const response = await axiosInstance.patch(`${API_ROUTES.PURCHASES}/${id}/status`, { status });
+        return response.data;
+    },
 
     // ---- 4. Inventory (Adjustments) ----
     getAdjustments: async () => {

@@ -360,16 +360,16 @@ const Products = () => {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Products</h1>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Products</h1>
           <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Manage your store items and stock levels.</p>
         </div>
         <Button
           onClick={() => setShowAddModal(true)}
-          className="bg-accent hover:bg-accent/90 text-white font-normal rounded-2xl h-11 px-6 shadow-lg shadow-accent/20 transition-all active:scale-95"
+          className="bg-gradient-to-r from-orange-500 to-accent text-white font-normal text-xs uppercase tracking-widest rounded-2xl h-11 px-6 shadow-lg shadow-accent/30 transition-all active:scale-95"
         >
           <Plus className="w-5 h-5 mr-2" />
           Add Product
@@ -377,30 +377,42 @@ const Products = () => {
       </div>
 
       {/* Stats Quick View */}
-      <div className="flex overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-4 gap-4 custom-scrollbar">
-        <div className="flex-shrink-0 w-[200px] sm:w-auto p-4 rounded-3xl bg-white shadow-sm ring-1 ring-gray-100">
-          <p className="text-[10px] font-normal text-gray-400 uppercase tracking-widest mb-1">Total Products</p>
-          <p className="text-xl font-normal text-gray-900">{products.length}</p>
-        </div>
-        <div className="flex-shrink-0 w-[200px] sm:w-auto p-4 rounded-3xl bg-white shadow-sm ring-1 ring-gray-100">
-          <p className="text-[10px] font-normal text-gray-400 uppercase tracking-widest mb-1">Active Listing</p>
-          <p className="text-xl font-normal text-primary">{products.filter((p: any) => p.isActive).length}</p>
-        </div>
-        <div className="flex-shrink-0 w-[200px] sm:w-auto p-4 rounded-3xl bg-white shadow-sm ring-1 ring-gray-100">
-          <p className="text-[10px] font-normal text-gray-400 uppercase tracking-widest mb-1">Low Stock</p>
-          <p className="text-xl font-normal text-accent">{products.filter((p: any) => p.stock > 0 && p.stock < 10).length}</p>
-        </div>
-        <div className="flex-shrink-0 w-[200px] sm:w-auto p-4 rounded-3xl bg-white shadow-sm ring-1 ring-gray-100">
-          <p className="text-[10px] font-normal text-gray-400 uppercase tracking-widest mb-1">Expiring Soon</p>
-          <p className="text-xl font-normal text-red-500">{products.filter((p: any) => p.expiryDate && new Date(p.expiryDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).length}</p>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-green-50/50 via-white to-green-50/30 ring-1 ring-green-100">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-green-600 flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
+            <Package className="w-6 h-6 text-white" />
+          </div>
+          <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Products</p>
+          <p className="text-2xl font-black bg-gradient-to-r from-primary to-green-600 bg-clip-text text-transparent">{products.length}</p>
+        </Card>
+        <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-blue-50/50 via-white to-blue-50/30 ring-1 ring-blue-100">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-500/20">
+            <TrendingUp className="w-6 h-6 text-white" />
+          </div>
+          <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Active Listing</p>
+          <p className="text-2xl font-black bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">{products.filter((p: any) => p.isActive).length}</p>
+        </Card>
+        <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-orange-50/50 via-white to-orange-50/30 ring-1 ring-orange-100">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-accent flex items-center justify-center mb-4 shadow-lg shadow-accent/20">
+            <Calculator className="w-6 h-6 text-white" />
+          </div>
+          <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Low Stock</p>
+          <p className="text-2xl font-black bg-gradient-to-r from-orange-500 to-accent bg-clip-text text-transparent">{products.filter((p: any) => p.stock > 0 && p.stock < 10).length}</p>
+        </Card>
+        <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-red-50/50 via-white to-red-50/30 ring-1 ring-red-100">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center mb-4 shadow-lg shadow-red-500/20">
+            <Calendar className="w-6 h-6 text-white" />
+          </div>
+          <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Expiring Soon</p>
+          <p className="text-2xl font-black bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">{products.filter((p: any) => p.expiryDate && new Date(p.expiryDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).length}</p>
+        </Card>
       </div>
 
       {/* Top Filter Chips */}
       <div className="flex items-center gap-2 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 custom-scrollbar">
         <button
           onClick={() => { setCategoryFilter(null); setCurrentPage(1); }}
-          className={`whitespace-nowrap px-6 py-2.5 rounded-full font-normal text-xs uppercase tracking-widest transition-all ${!categoryFilter ? "bg-accent text-white shadow-lg shadow-accent/20 scale-105" : "bg-white text-gray-400 hover:bg-gray-50 ring-1 ring-gray-100"}`}
+          className={`whitespace-nowrap px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${!categoryFilter ? "bg-primary text-white shadow-lg shadow-primary/20 scale-105" : "bg-white text-gray-400 hover:bg-gray-50 ring-1 ring-gray-100"}`}
         >
           All Items
         </button>
@@ -408,7 +420,7 @@ const Products = () => {
           <button
             key={cat}
             onClick={() => { setCategoryFilter(cat); setCurrentPage(1); }}
-            className={`whitespace-nowrap px-6 py-2.5 rounded-full font-normal text-xs uppercase tracking-widest transition-all ${categoryFilter === cat ? "bg-accent text-white shadow-lg shadow-accent/20 scale-105" : "bg-white text-gray-400 hover:bg-gray-50 ring-1 ring-gray-100"}`}
+            className={`whitespace-nowrap px-6 py-2.5 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${categoryFilter === cat ? "bg-primary text-white shadow-lg shadow-primary/20 scale-105" : "bg-white text-gray-400 hover:bg-gray-50 ring-1 ring-gray-100"}`}
           >
             {cat}
           </button>
@@ -417,28 +429,28 @@ const Products = () => {
 
       {/* Main Listing Section */}
       <div className="space-y-6">
-        <Card className="p-4 sm:p-5 border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100">
+        <Card className="p-4 sm:p-5 border-none shadow-2xl rounded-[32px] bg-white ring-1 ring-gray-100">
           <div className="relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary transition-colors" />
             <Input
               placeholder="Search products by identity..."
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-              className="pl-11 h-12 border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-primary/10 rounded-2xl transition-all font-normal"
+              className="pl-11 h-14 border-gray-100 bg-gray-50/50 focus:bg-white focus:ring-primary/10 rounded-2xl transition-all font-normal"
             />
           </div>
         </Card>
 
-        <Card className="border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100 overflow-hidden">
+        <Card className="border-none shadow-2xl rounded-[32px] bg-white ring-1 ring-gray-100 overflow-hidden">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full min-w-[900px]">
               <thead>
                 <tr className="bg-gray-50/50 border-b border-gray-50">
-                  <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Product Information</th>
-                  <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Pricing Details</th>
-                  <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Stock & Specs</th>
-                  <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Status</th>
-                  <th className="px-6 py-5 text-right text-[11px] font-normal text-gray-400 uppercase tracking-widest">Action</th>
+                  <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Product Information</th>
+                  <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Pricing Details</th>
+                  <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Stock & Specs</th>
+                  <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -466,9 +478,9 @@ const Products = () => {
                             </div>
                           )}
                           <div className="min-w-0">
-                            <p className="text-sm font-normal text-gray-900 truncate tracking-tight">{product.name}</p>
+                            <p className="text-sm font-black text-gray-900 truncate tracking-tight">{product.name}</p>
                             <div className="flex items-center gap-2 mt-1">
-                              <span className="px-1.5 py-0.5 rounded bg-orange-50 text-primary text-[9px] font-normal uppercase tracking-widest border border-orange-100 truncate">{product.brand || "Local Brand"}</span>
+                              <span className="px-1.5 py-0.5 rounded-lg bg-orange-50 text-accent text-[9px] font-black uppercase tracking-widest border border-orange-100 truncate">{product.brand || "Local Brand"}</span>
                               <span className="text-[10px] text-gray-400 font-normal truncate">{product.category}</span>
                             </div>
                           </div>
@@ -579,7 +591,7 @@ const Products = () => {
           <DialogContent className="max-w-4xl w-[95vw] sm:w-full rounded-[40px] p-8 sm:p-10 border-none shadow-2xl max-h-[92vh] overflow-y-auto custom-scrollbar">
             <form onSubmit={handleSave} className="space-y-8">
               <DialogHeader>
-                <DialogTitle className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+                <DialogTitle className="text-3xl font-black text-gray-900 tracking-tight">
                   {showAddModal ? "Add New Product" : "Edit Product Details"}
                 </DialogTitle>
                 <p className="text-sm text-gray-400 font-normal">Fill in the pricing, brand, and stock details below.</p>
@@ -642,17 +654,17 @@ const Products = () => {
                   <div className="flex items-start justify-between px-1 gap-4">
                     <div>
                       <div className="flex items-center gap-2">
-                        <PackagePlus className="w-4 h-4 text-violet-500 flex-shrink-0" />
+                        <PackagePlus className="w-4 h-4 text-primary flex-shrink-0" />
                         <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Buying Options</h3>
                       </div>
                       <p className="text-xs text-gray-400 font-normal mt-1 ml-6">
-                        Define how your product is sold — e.g. a full <strong>Carton of 24 packs</strong>, a <strong>Strip of 15 pieces</strong>, or a <strong>Single unit</strong>. You can add as many options as you sell.
+                        Define how your product is sold — e.g. a full <strong>Carton of 24 packs</strong>, a <strong>Strip of 15 pieces</strong>, or a <strong>Single unit</strong>.
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={addPackagingOption}
-                      className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-xl transition-colors border border-violet-100"
+                      className="flex-shrink-0 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary/10 px-4 py-2 rounded-2xl transition-colors border border-primary/10 shadow-sm"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       Add Option
@@ -680,10 +692,10 @@ const Products = () => {
                           <button
                             type="button"
                             onClick={() => togglePackagingExpanded(opt.id)}
-                            className="w-full flex items-center justify-between px-5 py-4 hover:bg-violet-50/40 transition-colors"
+                            className="w-full flex items-center justify-between px-5 py-5 hover:bg-primary/5 transition-colors"
                           >
-                            <div className="flex items-center gap-3">
-                              <span className="w-7 h-7 rounded-full bg-violet-100 text-violet-600 text-xs font-black flex items-center justify-center flex-shrink-0">
+                            <div className="flex items-center gap-4">
+                              <span className="w-8 h-8 rounded-2xl bg-primary text-white text-xs font-black flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
                                 {idx + 1}
                               </span>
                               <div className="text-left">
@@ -718,7 +730,7 @@ const Products = () => {
 
                           {/* ── Accordion Body ── */}
                           {opt.expanded && (
-                            <div className="px-5 pb-6 pt-4 bg-violet-50/20 border-t border-violet-50 space-y-5 animate-in fade-in slide-in-from-top-1 duration-200">
+                            <div className="px-6 pb-8 pt-5 bg-primary/5 border-t border-primary/10 space-y-6 animate-in fade-in slide-in-from-top-1 duration-200">
 
                               {/* 1. Option Name */}
                               <div>
@@ -729,7 +741,7 @@ const Products = () => {
                                   value={opt.label}
                                   onChange={(e) => updatePackagingOption(opt.id, 'label', e.target.value)}
                                   placeholder="e.g. Carton of 24 packs, Strip of 15 pieces, Single unit"
-                                  className="h-12 rounded-xl border-violet-100 bg-white focus:bg-white text-sm font-normal"
+                                  className="h-14 rounded-2xl border-gray-100 bg-white focus:ring-primary/10 text-sm font-normal"
                                 />
                                 <p className="text-[11px] text-gray-400 mt-1.5 font-normal">
                                   💡 This name appears on the customer app as a buying option. Be descriptive — <em>"Carton (24 packs)"</em> is better than just <em>"Carton"</em>.

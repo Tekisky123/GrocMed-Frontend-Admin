@@ -137,7 +137,7 @@ const GSTModule = () => {
                 arnNumber: `AA27${Date.now().toString().slice(-10)}`
             };
             await accountingApi.markGSTFiled(payload);
-            toast.success(`${returnType} marked as Filed! Registry updated.`, { id: "gst-file" });
+            toast.success(`${selectedReturn.type} marked as Filed! Registry updated.`, { id: "gst-file" });
             fetchAllData();
         } catch (error) {
             toast.error("Return filing record failed");
@@ -162,11 +162,11 @@ const GSTModule = () => {
     const isFiled = gstReturns.some(r => r.period === month && r.status === "Filed");
 
     return (
-        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">
+        <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Professional Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">GST Compliance</h1>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">GST Compliance</h1>
                     <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Tax Management & Returns Dashboard</p>
                 </div>
                 <div className="flex gap-3">
@@ -183,10 +183,10 @@ const GSTModule = () => {
                             })}
                         </SelectContent>
                     </Select>
-                    <Button variant="outline" onClick={handleExportJSON} className="h-11 px-5 rounded-2xl border-gray-100 font-bold text-[11px] uppercase tracking-widest gap-2 bg-white hover:bg-gray-50">
-                        <Download className="w-4 h-4 text-teal-600" /> GSTR-1 JSON
+                    <Button variant="outline" onClick={handleExportJSON} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
+                        <Download className="w-4 h-4 text-primary" /> GSTR-1 JSON
                     </Button>
-                    <Button onClick={() => window.open("https://www.gst.gov.in", "_blank")} className="h-11 px-5 rounded-2xl bg-gradient-to-r from-teal-500 to-teal-600 text-white font-bold text-[11px] uppercase tracking-widest shadow-lg shadow-teal-500/30 gap-2">
+                    <Button onClick={() => window.open("https://www.gst.gov.in", "_blank")} className="h-11 px-5 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-accent/30 gap-2">
                         <ExternalLink className="w-4 h-4" /> Portals
                     </Button>
                 </div>
@@ -194,12 +194,12 @@ const GSTModule = () => {
 
             {/* Statutory Alerts */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <Card className={`col-span-1 lg:col-span-2 p-5 border-none shadow-sm rounded-3xl ring-1 ${isFiled ? "ring-green-100 bg-green-50/30" : "ring-teal-100 bg-teal-50/30"} flex items-center gap-5`}>
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${isFiled ? "bg-white text-green-600" : "bg-white text-teal-600"}`}>
+                <Card className={`col-span-1 lg:col-span-2 p-6 border-none shadow-2xl rounded-[32px] ring-1 ${isFiled ? "ring-green-100 bg-green-50/30" : "ring-primary/10 bg-primary/5"} flex items-center gap-5`}>
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${isFiled ? "bg-primary text-white shadow-primary/20" : "bg-primary text-white shadow-primary/20"}`}>
                         {isFiled ? <ShieldCheck className="w-6 h-6" /> : <BarChart3 className="w-6 h-6" />}
                     </div>
                     <div>
-                        <p className="text-sm font-bold text-gray-900">{isFiled ? "Tax Period Finalized" : "Monthly Compliance Checklist"}</p>
+                        <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{isFiled ? "Tax Period Finalized" : "Monthly Compliance Checklist"}</p>
                         <p className="text-xs text-gray-500 mt-1 leading-relaxed">
                             {isFiled 
                                 ? "Returns for this period have been successfully marked as FILED. All accounting entries have been synchronized."
@@ -213,17 +213,17 @@ const GSTModule = () => {
                                 setSelectedReturn({ type: "GSTR-3B", liability: gstPayable });
                                 setShowFileConfirm(true);
                             }} 
-                            className="ml-auto shrink-0 bg-teal-600 hover:bg-teal-700 text-white font-bold text-[10px] uppercase rounded-xl h-9 px-4"
+                            className="ml-auto shrink-0 bg-gradient-to-r from-orange-500 to-accent text-white font-normal text-[10px] uppercase tracking-widest rounded-xl h-10 px-5 shadow-lg shadow-accent/20"
                         >
                             File Now
                         </Button>
                     )}
                 </Card>
-                <Card className="p-5 border-none shadow-sm rounded-3xl bg-gray-900 ring-1 ring-gray-800 flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-teal-400"><History className="w-5 h-5" /></div>
+                <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gray-900 ring-1 ring-gray-800 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-gray-800 flex items-center justify-center text-primary shadow-inner"><History className="w-6 h-6" /></div>
                     <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Net Payable</p>
-                        <p className="text-xl font-black text-white mt-0.5">₹{gstPayable.toLocaleString()}</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Net Payable</p>
+                        <p className="text-2xl font-black text-white mt-0.5">₹{gstPayable.toLocaleString()}</p>
                     </div>
                 </Card>
             </div>
@@ -235,16 +235,13 @@ const GSTModule = () => {
                 </div>
                 <div>
                     <p className="text-sm font-bold text-teal-900 uppercase tracking-tight">
-                        {activeView === "summary" && "GST Overview & Liability"}
-                        {activeView === "sales" && "Outward Supplies (GSTR-1)"}
-                        {activeView === "purchase" && "Inward Supplies & ITC"}
-                        {activeView === "returns" && "Statutory Filing Registry"}
+                        Compliance Help: {activeView === "summary" ? "Overview" : activeView === "sales" ? "Sales (GSTR-1)" : activeView === "purchase" ? "Purchases (ITC)" : "Filing Registry"}
                     </p>
                     <p className="text-xs text-teal-700/80 mt-1 leading-relaxed max-w-3xl">
-                        {activeView === "summary" && "This dashboard calculates your net GST payable by subtracting eligible Input Tax Credit (ITC) from your total Output tax collected on sales."}
-                        {activeView === "sales" && "Review all sales invoices for the month. The 'GSTR-1 JSON' button generates a file compatible with the government's offline utility tool."}
-                        {activeView === "purchase" && "Verify GST amounts paid on purchases. Ensure vendors have provided valid GSTINs to claim Input Tax Credit and reduce your tax liability."}
-                        {activeView === "returns" && "Once you file returns on the government portal, record the ARN (Application Reference Number) here to update your compliance history."}
+                        {activeView === "summary" && "This dashboard tracks your Net GST Liability. It automatically subtracts your Input Tax Credits (Purchases) from your Output Tax (Sales)."}
+                        {activeView === "sales" && "View all B2C and B2B sales invoices for the month. You can download the government-ready JSON for easy filing."}
+                        {activeView === "purchase" && "Verify GST paid to vendors. These records help you claim Input Tax Credit and reduce your total tax outgo."}
+                        {activeView === "returns" && "Maintain a permanent record of all filed returns. Use this registry to backup your ARN numbers for future audits."}
                     </p>
                 </div>
             </div>
@@ -252,13 +249,13 @@ const GSTModule = () => {
             {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    { label: "B2C Sales (Draft)", value: `₹${totalOutputGST.toLocaleString()}`, color: "from-teal-500 to-teal-600", bg: "from-teal-50", ring: "ring-teal-100" },
+                    { label: "B2C Sales (Draft)", value: `₹${totalOutputGST.toLocaleString()}`, color: "from-primary to-green-600", bg: "from-green-50", ring: "ring-green-100" },
                     { label: "Eligible ITC", value: `₹${totalITC.toLocaleString()}`, color: "from-blue-500 to-blue-600", bg: "from-blue-50", ring: "ring-blue-100" },
                     { label: "Tax Liability", value: `₹${gstPayable.toLocaleString()}`, color: "from-orange-500 to-accent", bg: "from-orange-50", ring: "ring-orange-100" },
-                    { label: "Returns Filed", value: gstReturns.filter(r => r.status === "Filed").length.toString(), color: "from-green-500 to-green-600", bg: "from-green-50", ring: "ring-green-100" },
+                    { label: "Returns Filed", value: gstReturns.filter(r => r.status === "Filed").length.toString(), color: "from-primary to-green-600", bg: "from-green-50", ring: "ring-green-100" },
                 ].map(({ label, value, color, bg, ring }) => (
-                    <Card key={label} className={`p-5 border-none shadow-lg rounded-3xl bg-gradient-to-br ${bg} via-white ${ring} ring-1`}>
-                        <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">{label}</p>
+                    <Card key={label} className={`p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br ${bg}/50 via-white ${ring} ring-1`}>
+                        <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">{label}</p>
                         <p className={`text-2xl font-black bg-gradient-to-r ${color} bg-clip-text text-transparent`}>{value}</p>
                     </Card>
                 ))}
@@ -267,7 +264,7 @@ const GSTModule = () => {
             {/* Navigation Tabs */}
             <div className="flex flex-wrap gap-2 bg-gray-100/60 rounded-2xl p-1.5 w-fit">
                 {([["summary", "Analytics"], ["sales", "GSTR-1 (Sales)"], ["purchase", "GSTR-2B (Purchases)"], ["returns", "Registry"]] as const).map(([key, label]) => (
-                    <button key={key} onClick={() => setActiveView(key)} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeView === key ? "bg-white text-teal-600 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+                    <button key={key} onClick={() => setActiveView(key)} className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeView === key ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
                         {label}
                     </button>
                 ))}
@@ -318,10 +315,10 @@ const GSTModule = () => {
             )}
 
             {activeView === "sales" && (
-                <Card className="border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100 overflow-hidden">
+                <Card className="border-none shadow-2xl rounded-[32px] bg-white ring-1 ring-gray-100 overflow-hidden">
                     <div className="rtable-wrap">
                         <table className="rtable">
-                            <thead><tr className="bg-gray-50/50 border-b border-gray-100">{["Inv No.", "Date", "Customer", "Taxable", "CGST", "SGST", "IGST", "Final Total"].map(h => <th key={h} className="px-5 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                            <thead><tr className="bg-gray-50/50 border-b border-gray-100 font-black">{["Inv No.", "Date", "Customer", "Taxable", "CGST", "SGST", "IGST", "Final Total"].map(h => <th key={h} className="px-5 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
                             <tbody className="divide-y divide-gray-50">
                                 {salesData.length === 0 ? <tr><td colSpan={8} className="text-center py-12 text-gray-400 italic text-sm font-semibold">No outward supplies recorded for {month}</td></tr> : salesData.map(r => (
                                     <tr key={r.inv} className="hover:bg-gray-50/30 transition-colors">
@@ -406,12 +403,12 @@ const GSTModule = () => {
 
             {/* GST Filing Confirmation Modal */}
             <Dialog open={showFileConfirm} onOpenChange={setShowFileConfirm}>
-                <DialogContent className="max-w-md rounded-[32px] p-8 border-none shadow-2xl">
+                <DialogContent className="max-w-md rounded-[40px] p-8 border-none shadow-2xl">
                     <DialogHeader>
-                        <div className="w-16 h-16 rounded-3xl bg-teal-50 flex items-center justify-center mb-4 ring-8 ring-teal-50/50 mx-auto">
-                            <Scale className="w-8 h-8 text-teal-600" />
+                        <div className="w-16 h-16 rounded-3xl bg-primary/5 flex items-center justify-center mb-4 ring-8 ring-primary/5 mx-auto">
+                            <Scale className="w-8 h-8 text-primary" />
                         </div>
-                        <DialogTitle className="text-2xl font-black text-gray-900 text-center">Record GST Filing?</DialogTitle>
+                        <DialogTitle className="text-3xl font-black text-gray-900 text-center tracking-tight">Record GST Filing?</DialogTitle>
                         <p className="text-sm text-gray-500 font-normal mt-2 text-center">
                             You are marking <strong>{selectedReturn?.type}</strong> for <strong>{month}</strong> as filed. This will finalize the tax period in your internal records.
                         </p>

@@ -23,9 +23,10 @@ export const downloadPayslipPDF = (employeeSlip: any, monthYear: string, action:
     doc.setFont("helvetica", "bold");
     doc.setFontSize(26);
     doc.text("GrocMed", 14, yPos);
-    doc.setFontSize(14);
-    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-    doc.text("Pvt Ltd", 62, yPos, { baseline: "bottom" });
+    doc.setFontSize(10);
+    doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+    doc.setFont("helvetica", "normal");
+    doc.text("ZHPL - SS Hyderabad, Old Malakpet, 500036", 62, yPos, { baseline: "bottom" });
 
     // Document Title
     doc.setTextColor(textDark[0], textDark[1], textDark[2]);
@@ -143,7 +144,7 @@ export const downloadPayslipPDF = (employeeSlip: any, monthYear: string, action:
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(textLighter[0], textLighter[1], textLighter[2]);
-    const footerText = "Subject to Mumbai Jurisdiction. This is a computer-generated payslip and needs no signature.";
+    const footerText = "Subject to Hyderabad Jurisdiction. This is a computer-generated payslip and needs no signature.";
     doc.text(footerText, pageWidth / 2, footerY + 2, { align: "center" });
 
     // Output

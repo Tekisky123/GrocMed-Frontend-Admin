@@ -40,11 +40,11 @@ export const downloadInvoicePDF = (invoice: any, action: 'download' | 'print' = 
     doc.setFontSize(9);
     doc.setTextColor(textLight[0], textLight[1], textLight[2]);
     const companyDetails = [
-        "123 Business Hub, Andheri East",
-        "Mumbai, Maharashtra, India 400069",
-        "GSTIN: 27AABCG1234M1Z5",
-        "Email: contact@grocmed.com",
-        "Phone: +91 98765 43210"
+        "ZHPL - SS Hyderabad Moosarambagh ES117",
+        "16-2-705/1/1, Old Malakpet, Hyderabad 500036",
+        "GSTIN: 36AAACZ8867B1Z1",
+        "FSSAI: 10020064002537 | CIN: U74900DL2015PTC286208",
+        "PAN: AAACZ8867B | Place of Supply: Telangana"
     ];
     companyDetails.forEach((line) => {
         doc.text(line, 14, yPos);
@@ -221,7 +221,7 @@ export const downloadInvoicePDF = (invoice: any, action: 'download' | 'print' = 
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(textLighter[0], textLighter[1], textLighter[2]);
-    const footerText = "Subject to Mumbai Jurisdiction. This is a computer-generated invoice and needs no signature.";
+    const footerText = "Subject to Hyderabad Jurisdiction. This is a computer-generated invoice and needs no signature.";
     doc.text(footerText, pageWidth / 2, footerY + 2, { align: "center" });
 
     // Output

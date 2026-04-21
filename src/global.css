@@ -168,12 +168,6 @@
   }
 
   /* Scrollable table wrapper – use this on the div wrapping .rtable */
-  .rtable-wrap {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
   /* Custom scrollbar for sidebar nav */
   .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
@@ -190,5 +184,55 @@
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #d1d5db;
+  }
+
+  /* Premium Slidable Table Utilities */
+  .rtable-wrap {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+  }
+
+  .rtable-wrap::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .rtable-wrap::-webkit-scrollbar-track {
+    background: #f9fafb;
+    border-radius: 10px;
+  }
+
+  .rtable-wrap::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 10px;
+    border: 1px solid #f9fafb;
+  }
+
+  .rtable-wrap::-webkit-scrollbar-thumb:hover {
+    background: #d1d5db;
+  }
+
+  .sticky-left {
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background-color: inherit;
+  }
+
+  /* Shadow indicator for sticky columns */
+  .sticky-shadow::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -10px;
+    bottom: 0;
+    width: 10px;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(0,0,0,0.05), transparent);
+    z-index: 21;
   }
 }

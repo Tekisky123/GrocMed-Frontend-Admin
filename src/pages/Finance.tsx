@@ -218,23 +218,23 @@ const Finance = () => {
     });
 
     return (
-        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">
+        <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Finance</h1>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Finance</h1>
                     <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Cash Book, Bank Book & Journal Entries</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" onClick={handleExport} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2">
+                    <Button variant="outline" onClick={handleExport} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
                         <Download className="w-4 h-4" /> Export
                     </Button>
-                    <Button onClick={() => setShowLedgerModal(true)} className="h-11 px-5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-blue-600/30 gap-2 p-0 sm:px-5">
+                    <Button onClick={() => setShowLedgerModal(true)} className="h-11 px-5 rounded-2xl bg-primary hover:bg-primary/90 text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-primary/20 gap-2 p-0 sm:px-5">
                         <Plus className="w-4 h-4 hidden sm:block" /> New Ledger
                     </Button>
                     <Button
                         onClick={() => setShowAddModal(true)}
-                        className="h-11 px-5 rounded-2xl bg-gradient-to-r from-primary to-green-600 text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-primary/30 gap-2 p-0 sm:px-5"
+                        className="h-11 px-5 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-accent/30 gap-2 p-0 sm:px-5"
                     >
                         <Plus className="w-4 h-4" /> New Entry
                     </Button>
@@ -262,32 +262,32 @@ const Finance = () => {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-5 border-none shadow-lg rounded-3xl bg-gradient-to-br from-green-50 via-white to-green-50/30 ring-1 ring-green-100">
+                <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-green-50/50 via-white to-green-50/30 ring-1 ring-green-100">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-green-600 flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
                         <Wallet className="w-6 h-6 text-white" />
                     </div>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Cash Balance</p>
+                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Cash Balance</p>
                     <p className="text-2xl font-black bg-gradient-to-r from-primary to-green-600 bg-clip-text text-transparent">₹{cashBalance.toLocaleString()}</p>
                 </Card>
-                <Card className="p-5 border-none shadow-lg rounded-3xl bg-gradient-to-br from-blue-50 via-white to-blue-50/30 ring-1 ring-blue-100">
+                <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-blue-50/50 via-white to-blue-50/30 ring-1 ring-blue-100">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-500/20">
                         <Landmark className="w-6 h-6 text-white" />
                     </div>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Bank Balance</p>
+                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Bank Balance</p>
                     <p className="text-2xl font-black bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">₹{bankBalance.toLocaleString()}</p>
                 </Card>
-                <Card className="p-5 border-none shadow-lg rounded-3xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 ring-1 ring-emerald-100">
+                <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-emerald-50/50 via-white to-emerald-50/30 ring-1 ring-emerald-100">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/20">
                         <TrendingUp className="w-6 h-6 text-white" />
                     </div>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Total Receipts</p>
+                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Receipts</p>
                     <p className="text-2xl font-black bg-gradient-to-r from-emerald-500 to-emerald-600 bg-clip-text text-transparent">₹{totalReceipts.toLocaleString()}</p>
                 </Card>
-                <Card className="p-5 border-none shadow-lg rounded-3xl bg-gradient-to-br from-red-50 via-white to-red-50/30 ring-1 ring-red-100">
+                <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-red-50/50 via-white to-red-50/30 ring-1 ring-red-100">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center mb-4 shadow-lg shadow-red-500/20">
                         <TrendingDown className="w-6 h-6 text-white" />
                     </div>
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Total Payments</p>
+                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Payments</p>
                     <p className="text-2xl font-black bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">₹{totalPayments.toLocaleString()}</p>
                 </Card>
             </div>
@@ -344,20 +344,20 @@ const Finance = () => {
 
             {/* Content Tabs */}
             {activeTab === "cash" && (
-                <Card className="border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100 overflow-hidden">
+                <Card className="border-none shadow-2xl rounded-[32px] bg-white ring-1 ring-gray-100 overflow-hidden">
                     <div className="px-6 py-5 border-b border-gray-50">
-                        <h3 className="font-black text-gray-900">Cash Book</h3>
+                        <h3 className="font-black text-gray-900 tracking-tight">Cash Book</h3>
                         <p className="text-xs text-gray-400 font-normal mt-0.5">Recorded cash transactions</p>
                     </div>
                     <div className="rtable-wrap">
                         <table className="rtable">
                             <thead>
                                 <tr className="bg-gray-50/50 border-b border-gray-50">
-                                    <th>Voucher No.</th>
-                                    <th>Date</th>
-                                    <th>Narration</th>
-                                    <th>Type</th>
-                                    <th>Amount</th>
+                                    <th className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-6">Voucher No.</th>
+                                    <th className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-6">Date</th>
+                                    <th className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-6">Narration</th>
+                                    <th className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-6">Type</th>
+                                    <th className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-6 text-right">Amount</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -366,22 +366,22 @@ const Finance = () => {
                                 ) : cashData.length === 0 ? (
                                     <tr><td colSpan={5} className="text-center py-8 text-gray-400">No cash transactions found</td></tr>
                                 ) : cashData.map(row => (
-                                    <tr key={row._id} className="hover:bg-gray-50/30 transition-colors">
-                                        <td className="font-mono font-semibold text-gray-700">{row.voucherNo}</td>
-                                        <td className="text-gray-600 whitespace-nowrap">{new Date(row.date).toLocaleDateString()}</td>
-                                        <td className="font-medium text-gray-900">{row.narration}</td>
-                                        <td>
+                                    <tr key={row._id} className="hover:bg-gray-50/30 transition-colors border-b border-gray-50/50 last:border-0">
+                                        <td className="font-mono font-semibold text-gray-700 px-6 py-4">{row.voucherNo}</td>
+                                        <td className="text-gray-600 whitespace-nowrap px-6 py-4">{new Date(row.date).toLocaleDateString()}</td>
+                                        <td className="font-medium text-gray-900 px-6 py-4">{row.narration}</td>
+                                        <td className="px-6 py-4">
                                             {row.type === "Receipt" ? (
-                                                <Badge className="bg-green-50 text-green-700 border-green-200 text-xs font-semibold px-2 py-0.5 rounded-lg flex items-center gap-1 w-fit">
+                                                <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 w-fit uppercase">
                                                     <ArrowDownLeft className="w-3 h-3" /> <span className="hidden xs:inline">Receipt</span>
                                                 </Badge>
                                             ) : (
-                                                <Badge className="bg-red-50 text-red-600 border-red-200 text-xs font-semibold px-2 py-0.5 rounded-lg flex items-center gap-1 w-fit">
+                                                <Badge className="bg-red-50 text-red-600 border-red-200 text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 w-fit uppercase">
                                                     <ArrowUpRight className="w-3 h-3" /> <span className="hidden xs:inline">Payment</span>
                                                 </Badge>
                                             )}
                                         </td>
-                                        <td className={`font-bold whitespace-nowrap ${row.type === "Receipt" ? "text-green-600" : "text-red-500"}`}>
+                                        <td className={`font-black whitespace-nowrap px-6 py-4 text-right ${row.type === "Receipt" ? "text-green-600" : "text-red-500"}`}>
                                             {row.type === "Receipt" ? "+" : "-"}₹{row.totalAmount?.toLocaleString()}
                                         </td>
                                     </tr>
@@ -434,7 +434,7 @@ const Finance = () => {
                             <h3 className="font-black text-gray-900">Journal Register</h3>
                             <p className="text-xs text-gray-400 font-normal mt-0.5">Non-cash adjustment entries</p>
                         </div>
-                        <Button size="sm" onClick={() => setShowJournalModal(true)} className="h-9 px-4 rounded-xl bg-gradient-to-r from-primary to-green-600 text-white font-normal text-xs gap-1.5">
+                        <Button size="sm" onClick={() => setShowJournalModal(true)} className="h-10 px-5 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-accent/20 gap-1.5">
                             <Plus className="w-3.5 h-3.5" /> New Voucher
                         </Button>
                     </div>
@@ -475,10 +475,10 @@ const Finance = () => {
 
             {/* Add Cash Entry Modal */}
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent className="max-w-md rounded-[32px] p-8 border-none shadow-2xl">
+                <DialogContent className="max-w-md rounded-[40px] p-8 border-none shadow-2xl">
                     <DialogHeader>
-                        <DialogTitle className="text-2xl font-black bg-gradient-to-r from-primary to-green-600 bg-clip-text text-transparent">New Cash Entry</DialogTitle>
-                        <p className="text-sm text-gray-500 font-normal mt-1">Record a daily cash transaction</p>
+                        <DialogTitle className="text-3xl font-black bg-gradient-to-r from-orange-500 to-accent bg-clip-text text-transparent tracking-tight text-center">New Cash Entry</DialogTitle>
+                        <p className="text-sm text-gray-500 font-normal mt-1 text-center">Record a daily cash transaction</p>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div>
@@ -515,19 +515,19 @@ const Finance = () => {
                             </Select>
                         </div>
                     </div>
-                    <DialogFooter className="gap-3">
+                    <DialogFooter className="gap-3 sm:flex-row flex-col">
                         <Button variant="outline" onClick={() => setShowAddModal(false)} className="flex-1 h-12 rounded-2xl border-gray-100 font-normal text-xs uppercase tracking-widest">Cancel</Button>
-                        <Button onClick={handleSaveEntry} className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-primary to-green-600 text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-primary/30">Save Entry</Button>
+                        <Button onClick={handleSaveEntry} className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-accent/30">Save Entry</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* Journal Voucher Modal */}
             <Dialog open={showJournalModal} onOpenChange={setShowJournalModal}>
-                <DialogContent className="max-w-md rounded-[32px] p-8 border-none shadow-2xl">
+                <DialogContent className="max-w-md rounded-[40px] p-8 border-none shadow-2xl">
                     <DialogHeader>
-                        <DialogTitle className="text-2xl font-black text-gray-900">New Journal Voucher</DialogTitle>
-                        <p className="text-sm text-gray-500 font-normal mt-1">Record a non-cash accounting entry</p>
+                        <DialogTitle className="text-3xl font-black text-gray-900 tracking-tight text-center">New Voucher</DialogTitle>
+                        <p className="text-sm text-gray-500 font-normal mt-1 text-center">Record a non-cash accounting entry</p>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div>

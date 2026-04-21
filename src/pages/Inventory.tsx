@@ -193,18 +193,18 @@ const Inventory = () => {
     };
 
     return (
-        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">
+        <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Inventory</h1>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Inventory</h1>
                     <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Stock Ledger & Advanced Adjustments</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" onClick={handleExport} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2">
+                    <Button variant="outline" onClick={handleExport} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
                         <Download className="w-4 h-4" /> Export
                     </Button>
-                    <Button onClick={() => setShowAdjust(true)} className="h-11 px-5 rounded-2xl bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/30 gap-2">
+                    <Button onClick={() => setShowAdjust(true)} className="h-11 px-5 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-accent/30 gap-2">
                         <Plus className="w-4 h-4" /> Adjust Stock
                     </Button>
                 </div>
@@ -212,33 +212,33 @@ const Inventory = () => {
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-5 border-none shadow-lg rounded-3xl bg-gradient-to-br from-indigo-50 via-white to-indigo-50/30 ring-1 ring-indigo-100">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center mb-4">
+                <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-green-50/50 via-white to-green-50/30 ring-1 ring-green-100">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-green-600 flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
                         <Package className="w-6 h-6 text-white" />
                     </div>
-                    <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Stock Variations</p>
-                    <p className="text-2xl font-black bg-gradient-to-r from-indigo-500 to-indigo-600 bg-clip-text text-transparent">{totalSKUs}</p>
+                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Stock Variations</p>
+                    <p className="text-2xl font-black bg-gradient-to-r from-primary to-green-600 bg-clip-text text-transparent">{totalSKUs}</p>
                 </Card>
-                <Card className="p-5 border-none shadow-lg rounded-3xl bg-gradient-to-br from-red-50 via-white to-red-50/30 ring-1 ring-red-100">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center mb-4">
+                <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-red-50/50 via-white to-red-50/30 ring-1 ring-red-100">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center mb-4 shadow-lg shadow-red-500/20">
                         <AlertTriangle className="w-6 h-6 text-white" />
                     </div>
-                    <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Low Stock Alerts</p>
+                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Low Stock Alerts</p>
                     <p className="text-2xl font-black bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">{lowStockCount}</p>
                 </Card>
-                <Card className="p-5 border-none shadow-lg rounded-3xl bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 ring-1 ring-emerald-100">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center mb-4">
+                <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-emerald-50/50 via-white to-emerald-50/30 ring-1 ring-emerald-100">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/20">
                         <BarChart3 className="w-6 h-6 text-white" />
                     </div>
-                    <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Ledger Value</p>
+                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Ledger Value</p>
                     <p className="text-2xl font-black bg-gradient-to-r from-emerald-500 to-emerald-600 bg-clip-text text-transparent">₹{(totalValue / 1000).toFixed(1)}k</p>
                 </Card>
-                <Card className="p-5 border-none shadow-lg rounded-3xl bg-gradient-to-br from-gray-50 via-white to-gray-50/30 ring-1 ring-gray-200">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center mb-4">
+                <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-orange-50/50 via-white to-orange-50/30 ring-1 ring-orange-100">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-accent flex items-center justify-center mb-4 shadow-lg shadow-accent/20">
                         <RefreshCw className="w-6 h-6 text-white" />
                     </div>
-                    <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-1">Out of Stock</p>
-                    <p className="text-2xl font-black text-gray-500">{outOfStock}</p>
+                    <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Out of Stock</p>
+                    <p className="text-2xl font-black text-accent">{outOfStock}</p>
                 </Card>
             </div>
 
@@ -259,7 +259,7 @@ const Inventory = () => {
                     <button
                         key={key}
                         onClick={() => setView(key as View)}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === key ? "bg-white text-indigo-600 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${view === key ? "bg-white text-primary shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
                     >
                         {label}
                     </button>
@@ -268,7 +268,7 @@ const Inventory = () => {
 
             {/* Stock Ledger */}
             {view === "stock" && (
-                <Card className="border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100 overflow-hidden">
+                <Card className="border-none shadow-2xl rounded-[32px] bg-white ring-1 ring-gray-100 overflow-hidden">
                     <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-3">
                         <div className="flex-1 relative">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -287,9 +287,9 @@ const Inventory = () => {
                     <div className="rtable-wrap">
                         <table className="rtable">
                             <thead>
-                                <tr className="bg-gray-50/50 border-b border-gray-50">
+                                <tr className="bg-gray-50/50 border-b border-gray-50 font-black">
                                     {["Ref ID", "Product & Buying Type", "Compliance", "Price", "In Stock (Closing)", "Stock Value", "Status"].map(h => (
-                                        <th key={h} className="px-5 py-4 text-left text-[11px] font-bold text-gray-400 uppercase tracking-widest">{h}</th>
+                                        <th key={h} className="px-5 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
@@ -307,7 +307,7 @@ const Inventory = () => {
                                                     {item.alert && <AlertTriangle className="w-3 h-3 text-red-500" />}
                                                     <span className="text-sm font-bold text-gray-900">{item.name}</span>
                                                 </div>
-                                                <span className="text-[10px] font-normal text-indigo-500 uppercase tracking-tight mt-0.5">{item.label}</span>
+                                                <span className="text-[10px] font-black text-primary uppercase tracking-tight mt-0.5">{item.label}</span>
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">
@@ -318,7 +318,7 @@ const Inventory = () => {
                                         </td>
                                         <td className="px-5 py-4 text-sm font-semibold text-gray-600">₹{item.cost?.toLocaleString()}</td>
                                         <td className="px-5 py-4 text-sm font-black text-gray-900">{item.closing.toLocaleString()}</td>
-                                        <td className="px-5 py-4 text-sm font-black text-indigo-600">₹{item.value.toLocaleString()}</td>
+                                        <td className="px-5 py-4 text-sm font-black text-primary">₹{item.value.toLocaleString()}</td>
                                         <td className="px-5 py-4">
                                             <Badge className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${item.alert ? "bg-red-50 text-red-600 border-red-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"}`}>
                                                 {item.alert ? "CRITICAL" : "OPTIMAL"}
@@ -330,7 +330,7 @@ const Inventory = () => {
                             <tfoot>
                                 <tr className="bg-gray-50/50 border-t border-gray-100">
                                     <td colSpan={5} className="px-5 py-4 text-xs font-black text-gray-900 uppercase tracking-widest">Aggregate Ledger Value</td>
-                                    <td className="px-5 py-4 text-sm font-black text-indigo-600">₹{totalValue.toLocaleString()}</td>
+                                    <td className="px-5 py-4 text-sm font-black text-primary">₹{totalValue.toLocaleString()}</td>
                                     <td></td>
                                 </tr>
                             </tfoot>
@@ -464,9 +464,9 @@ const Inventory = () => {
                             <Input type="date" value={adjDate} onChange={e => setAdjDate(e.target.value)} className="h-14 rounded-2xl border-gray-100 bg-gray-50/50" />
                         </div>
                     </div>
-                    <DialogFooter className="gap-3">
+                    <DialogFooter className="gap-3 sm:flex-row flex-col">
                         <Button variant="ghost" onClick={() => setShowAdjust(false)} className="flex-1 h-14 rounded-2xl font-bold text-xs uppercase tracking-widest text-gray-400">Cancel</Button>
-                        <Button onClick={handleSaveAdjustment} className="flex-1 h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase tracking-widest shadow-xl shadow-indigo-600/30">Commit Changes</Button>
+                        <Button onClick={handleSaveAdjustment} className="flex-1 h-14 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-bold text-xs uppercase tracking-widest shadow-xl shadow-accent/30">Commit Changes</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
