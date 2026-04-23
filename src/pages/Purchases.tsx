@@ -37,7 +37,7 @@ interface PurchaseItem {
     date: string;
     productId: string;
     productName: string;
-    sku: "PACK" | "CARTON" | "LOOSE";
+    sku: "Carton" | "Pack" | "Single" | "Bag" | "Kilograms";
     quantity: number;
     mrp: number;
     rate: number;
@@ -70,7 +70,7 @@ const Purchases = () => {
         date: new Date().toISOString().split('T')[0],
         productId: "",
         productName: "",
-        sku: "PACK",
+        sku: "Pack",
         quantity: 0,
         mrp: 0,
         rate: 0,
@@ -132,7 +132,7 @@ const Purchases = () => {
             date: items[items.length - 1]?.date || new Date().toISOString().split('T')[0],
             productId: "",
             productName: "",
-            sku: "PACK",
+            sku: "Pack",
             quantity: 0,
             mrp: 0,
             rate: 0,
@@ -248,7 +248,7 @@ const Purchases = () => {
                 date: new Date().toISOString().split('T')[0],
                 productId: "",
                 productName: "",
-                sku: "PACK",
+                sku: "Pack",
                 quantity: 0,
                 mrp: 0,
                 rate: 0,
@@ -498,7 +498,7 @@ const Purchases = () => {
                                                 <tr>
                                                     <th className="sticky-left z-20 bg-gray-900 px-3 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] whitespace-nowrap min-w-[50px]">S.NO</th>
                                                     <th className="sticky-left z-20 bg-gray-900 px-3 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] whitespace-nowrap min-w-[140px] sticky-shadow" style={{ left: '50px' }}>INVOICE NO</th>
-                                                    {["DATE", "PRODUCT NAME", "SKU", "QTY", "MRP", "PURCHASE PRICE", "HSN", "GST %", "MFG", "EXPIRY", "TAXABLE", "TOTAL", ""].map((h, i) => (
+                                                    {["DATE", "PRODUCT NAME", "TYPE / VOLUME", "QTY", "MRP", "PURCHASE PRICE", "HSN", "GST %", "MFG", "EXPIRY", "TAXABLE", "TOTAL", ""].map((h, i) => (
                                                         <th key={i} className="px-3 py-5 text-center text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] whitespace-nowrap">{h}</th>
                                                     ))}
                                                 </tr>
@@ -531,9 +531,11 @@ const Purchases = () => {
                                                                     <SelectValue />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
-                                                                    <SelectItem value="PACK">PACK</SelectItem>
-                                                                    <SelectItem value="CARTON">CARTON</SelectItem>
-                                                                    <SelectItem value="LOOSE">LOOSE</SelectItem>
+                                                                    <SelectItem value="Carton">Carton</SelectItem>
+                                                                    <SelectItem value="Pack">Pack</SelectItem>
+                                                                    <SelectItem value="Single">Single</SelectItem>
+                                                                    <SelectItem value="Bag">Bag</SelectItem>
+                                                                    <SelectItem value="Kilograms">Kilograms</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
                                                         </td>

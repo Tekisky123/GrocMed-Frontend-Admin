@@ -103,7 +103,7 @@ export const downloadPurchaseInvoicePDF = (purchase: any) => {
     // --- Items Table ---
     const tableData = purchase.items.map((item: any, index: number) => [
         (index + 1).toString(),
-        `${item.productName}\n[SKU: ${item.sku}]`,
+        `${item.productName}\n[Type/Vol: ${item.sku}]`,
         item.hsn || "-",
         `${new Date(item.mfgDate).toLocaleDateString('en-IN', {month: '2-digit', year: '2-digit'})}/${new Date(item.expiryDate).toLocaleDateString('en-IN', {month: '2-digit', year: '2-digit'})}`,
         item.quantity.toString(),
