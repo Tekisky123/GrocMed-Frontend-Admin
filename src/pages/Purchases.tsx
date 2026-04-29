@@ -17,11 +17,12 @@ import {
     DialogHeader,
     DialogTitle,
     DialogFooter,
+    DialogDescription
 } from "@/components/ui/dialog";
 import {
     ShoppingBag, Building2, Plus, Search,
     Download, CheckCircle2, Clock, Info,
-    Trash2, Calendar as CalendarIcon, Eye
+    Trash2, Calendar as CalendarIcon, Eye, Edit2, AlertTriangle
 } from "lucide-react";
 import { accountingApi } from "@/api/accountingApi";
 import { productApi } from "@/api/productApi";
@@ -55,6 +56,8 @@ const Purchases = () => {
     const [showViewModal, setShowViewModal] = useState(false);
     const [viewPurchase, setViewPurchase] = useState<any>(null);
     const [search, setSearch] = useState("");
+    const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
     // --- Dynamic Data ---
     const [purchases, setPurchases] = useState<any[]>([]);
@@ -207,6 +210,70 @@ const Purchases = () => {
         }
     };
 
+    const handleEditPurchase = (purchase: any) => {
+        setVendorName(purchase.supplierName);
+        setVendorGSTIN(purchase.gstin === 'URD' ? '' : purchase.gstin);
+        setItems(purchase.items.map((i: any) => ({
+            id: Math.random().toString(36).substr(2, 9),
+            invoiceNo: purchase.invoiceNo,
+            date: new Date(purchase.date).toISOString().split('T')[0],
+            productId: i.productId?._id || i.productId,
+            productName: i.productName || i.productId?.name,
+            sku: i.sku,
+            quantity: i.quantity,
+            mrp: i.mrp,
+            rate: i.rate,
+            hsn: i.hsn,
+            gstRate: i.gstRate,
+            mfgDate: i.mfgDate ? new Date(i.mfgDate).toISOString().split('T')[0] : "",
+            expiryDate: i.expiryDate ? new Date(i.expiryDate).toISOString().split('T')[0] : "",
+            taxableAmount: i.taxableAmount,
+            total: i.total
+        })));
+        setEditingPurchaseId(purchase._id);
+        setShowAddModal(true);
+    };
+
+    const handleDeleteClick = (id: string) => {
+        setDeleteConfirmId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteConfirmId) return;
+        try {
+            await accountingApi.deletePurchase(deleteConfirmId);
+            toast.success("Purchase deleted and stock reverted");
+            fetchPurchases();
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to delete purchase");
+        } finally {
+            setDeleteConfirmId(null);
+        }
+    };
+
+    const resetForm = () => {
+        setVendorName("");
+        setVendorGSTIN("");
+        setEditingPurchaseId(null);
+        setItems([{
+            id: Math.random().toString(36).substr(2, 9),
+            invoiceNo: "",
+            date: new Date().toISOString().split('T')[0],
+            productId: "",
+            productName: "",
+            sku: "Pack",
+            quantity: 0,
+            mrp: 0,
+            rate: 0,
+            hsn: "",
+            gstRate: 0,
+            mfgDate: "",
+            expiryDate: "",
+            taxableAmount: 0,
+            total: 0
+        }]);
+    };
+
     const handleSavePurchase = async () => {
         // Enforce strong validation - all items must have a product selected
         const hasEmptyProduct = items.some(i => !i.productId || !i.productName);
@@ -248,29 +315,16 @@ const Purchases = () => {
                 status: "Unpaid"
             };
 
-            await accountingApi.createPurchase(payload);
-            toast.success("Purchase register updated successfully!");
-            setShowAddModal(false);
+            if (editingPurchaseId) {
+                await accountingApi.updatePurchase(editingPurchaseId, payload);
+                toast.success("Purchase updated successfully");
+            } else {
+                await accountingApi.createPurchase(payload);
+                toast.success("Purchase recorded successfully");
+            }
             
-            // Reset
-            setVendorName(""); setVendorGSTIN("");
-            setItems([{
-                id: Math.random().toString(36).substr(2, 9),
-                invoiceNo: "",
-                date: new Date().toISOString().split('T')[0],
-                productId: "",
-                productName: "",
-                sku: "Pack",
-                quantity: 0,
-                mrp: 0,
-                rate: 0,
-                hsn: "",
-                gstRate: 0,
-                mfgDate: "",
-                expiryDate: "",
-                taxableAmount: 0,
-                total: 0
-            }]);
+            setShowAddModal(false);
+            resetForm();
             fetchPurchases();
         } catch (error: any) {
             toast.error(error?.response?.data?.message || "Failed to save purchase");
@@ -314,7 +368,10 @@ const Purchases = () => {
                         <Download className="w-4 h-4 text-primary" /> Export
                     </Button>
                     <Button
-                        onClick={() => setShowAddModal(true)}
+                        onClick={() => {
+                            resetForm();
+                            setShowAddModal(true);
+                        }}
                         className="h-11 px-5 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-accent/30 gap-2 hover:scale-[1.02] transition-transform active:scale-[0.98]"
                     >
                         <Plus className="w-4 h-4" /> Record Purchase
@@ -395,7 +452,7 @@ const Purchases = () => {
                                                 </Select>
                                             </td>
                                             <td className="px-6 py-5">
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1">
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
@@ -403,17 +460,33 @@ const Purchases = () => {
                                                             setViewPurchase(p);
                                                             setShowViewModal(true);
                                                         }}
-                                                        className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-blue-600 text-gray-400 transition-all"
+                                                        className="h-8 w-8 rounded-xl hover:bg-blue-50 hover:text-blue-600 text-gray-400 transition-all"
                                                     >
                                                         <Eye className="w-4 h-4" />
                                                     </Button>
                                                     <Button 
                                                         variant="ghost" 
                                                         size="icon" 
+                                                        onClick={() => handleEditPurchase(p)}
+                                                        className="h-8 w-8 rounded-xl hover:bg-green-50 hover:text-green-600 text-gray-400 transition-all"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
                                                         onClick={() => downloadPurchaseInvoicePDF(p)}
-                                                        className="h-9 w-9 rounded-xl hover:bg-orange-50 hover:text-orange-600 text-gray-400 transition-all"
+                                                        className="h-8 w-8 rounded-xl hover:bg-orange-50 hover:text-orange-600 text-gray-400 transition-all"
                                                     >
                                                         <Download className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        onClick={() => handleDeleteClick(p._id)}
+                                                        className="h-8 w-8 rounded-xl hover:bg-red-50 hover:text-red-600 text-gray-400 transition-all"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
                                                     </Button>
                                                 </div>
                                             </td>
@@ -643,7 +716,9 @@ const Purchases = () => {
 
                         <DialogFooter className="p-8 sm:p-10 pt-4 bg-gray-50/50 border-t border-gray-100 gap-4">
                             <Button variant="ghost" onClick={() => setShowAddModal(false)} className="h-14 px-8 rounded-2xl font-black text-xs uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-colors">Cancel</Button>
-                            <Button onClick={handleSavePurchase} className="h-14 px-12 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-[0.98] transition-all">Record Purchase Entry</Button>
+                            <Button onClick={handleSavePurchase} className="h-14 px-12 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                                {editingPurchaseId ? "Update Purchase" : "Record Purchase Entry"}
+                            </Button>
                         </DialogFooter>
                     </div>
                 </DialogContent>
@@ -715,6 +790,37 @@ const Purchases = () => {
                             </div>
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Modal */}
+            <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+                <DialogContent className="sm:max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl">
+                    <div className="p-8 pb-6 flex flex-col items-center text-center">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">
+                            <AlertTriangle className="w-8 h-8 text-red-600" />
+                        </div>
+                        <DialogTitle className="text-xl font-black text-gray-900 mb-2">Delete Purchase Invoice?</DialogTitle>
+                        <DialogDescription className="text-gray-500 font-medium mb-6 leading-relaxed">
+                            Are you sure you want to delete this purchase? This action will <span className="font-bold text-red-600">revert the inventory stock</span> and delete the associated accounting records. This cannot be undone.
+                        </DialogDescription>
+                    </div>
+                    <DialogFooter className="p-6 bg-gray-50 flex gap-3 sm:justify-center border-t border-gray-100">
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => setDeleteConfirmId(null)}
+                            className="flex-1 h-12 rounded-xl font-bold uppercase tracking-wider text-gray-500 hover:text-gray-900 hover:bg-gray-200"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            variant="destructive" 
+                            onClick={confirmDelete}
+                            className="flex-1 h-12 rounded-xl font-bold uppercase tracking-wider bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20"
+                        >
+                            Yes, Delete
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
