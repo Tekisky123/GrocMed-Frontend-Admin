@@ -21,7 +21,7 @@ import {
 import {
     ShoppingBag, Building2, Plus, Search,
     Download, CheckCircle2, Clock, Info,
-    Trash2, Calendar as CalendarIcon
+    Trash2, Calendar as CalendarIcon, Eye
 } from "lucide-react";
 import { accountingApi } from "@/api/accountingApi";
 import { productApi } from "@/api/productApi";
@@ -37,7 +37,7 @@ interface PurchaseItem {
     date: string;
     productId: string;
     productName: string;
-    sku: "Carton" | "Pack" | "Single" | "Bag" | "Kilograms";
+    sku: string;
     quantity: number;
     mrp: number;
     rate: number;
@@ -52,6 +52,8 @@ interface PurchaseItem {
 const Purchases = () => {
     const [activeView, setActiveView] = useState<ActiveView>("invoices");
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [viewPurchase, setViewPurchase] = useState<any>(null);
     const [search, setSearch] = useState("");
 
     // --- Dynamic Data ---
@@ -174,9 +176,19 @@ const Purchases = () => {
                     updated.productName = prod.name;
                     updated.hsn = prod.hsnCode || "";
                     updated.gstRate = prod.gstRate || 0;
-                    updated.mrp = prod.mrp || 0;
+                    
+                    if (prod.packagingOptions && prod.packagingOptions.length > 0) {
+                        updated.sku = prod.packagingOptions[0].label;
+                        updated.mrp = prod.packagingOptions[0].mrp || 0;
+                        updated.rate = prod.packagingOptions[0].salePrice || 0;
+                    } else {
+                        updated.sku = prod.unitType || "Single";
+                        updated.mrp = prod.mrp || 0;
+                        updated.rate = prod.singleUnitPrice || prod.offerPrice || 0;
+                    }
+
                     // Recalculate based on new GST
-                    updated.taxableAmount = item.quantity * item.rate;
+                    updated.taxableAmount = updated.quantity * updated.rate;
                     updated.total = updated.taxableAmount + (updated.taxableAmount * updated.gstRate / 100);
                 }
             }
@@ -383,14 +395,27 @@ const Purchases = () => {
                                                 </Select>
                                             </td>
                                             <td className="px-6 py-5">
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    onClick={() => downloadPurchaseInvoicePDF(p)}
-                                                    className="h-9 w-9 rounded-xl hover:bg-orange-50 hover:text-orange-600 text-gray-400 transition-all"
-                                                >
-                                                    <Download className="w-4 h-4" />
-                                                </Button>
+                                                <div className="flex items-center gap-2">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        onClick={() => {
+                                                            setViewPurchase(p);
+                                                            setShowViewModal(true);
+                                                        }}
+                                                        className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-blue-600 text-gray-400 transition-all"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        onClick={() => downloadPurchaseInvoicePDF(p)}
+                                                        className="h-9 w-9 rounded-xl hover:bg-orange-50 hover:text-orange-600 text-gray-400 transition-all"
+                                                    >
+                                                        <Download className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -504,7 +529,12 @@ const Purchases = () => {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100 bg-white">
-                                                {items.map((item, index) => (
+                                                {items.map((item, index) => {
+                                                    const selectedProductObj = allProducts.find(p => p._id === item.productId);
+                                                    const packagingOptions = selectedProductObj?.packagingOptions || [];
+                                                    const hasPackagingOptions = packagingOptions.length > 0;
+                                                    
+                                                    return (
                                                     <tr key={item.id} className="hover:bg-orange-50/30 transition-colors group">
                                                         <td className="sticky-left z-10 bg-white px-2 py-3 text-center text-xs font-black text-gray-300 min-w-[50px]">{index + 1}</td>
                                                         <td className="sticky-left z-10 bg-white px-1 py-3 w-32 min-w-[140px] sticky-shadow" style={{ left: '50px' }}>
@@ -531,11 +561,17 @@ const Purchases = () => {
                                                                     <SelectValue />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
-                                                                    <SelectItem value="Carton">Carton</SelectItem>
-                                                                    <SelectItem value="Pack">Pack</SelectItem>
-                                                                    <SelectItem value="Single">Single</SelectItem>
-                                                                    <SelectItem value="Bag">Bag</SelectItem>
-                                                                    <SelectItem value="Kilograms">Kilograms</SelectItem>
+                                                                    {hasPackagingOptions ? (
+                                                                        packagingOptions.map((opt: any) => (
+                                                                            <SelectItem key={opt._id || opt.id || opt.label} value={opt.label}>
+                                                                                {opt.label}
+                                                                            </SelectItem>
+                                                                        ))
+                                                                    ) : (
+                                                                        <SelectItem value={selectedProductObj?.unitType || "Single"}>
+                                                                            {selectedProductObj?.unitType || "Single"}
+                                                                        </SelectItem>
+                                                                    )}
                                                                 </SelectContent>
                                                             </Select>
                                                         </td>
@@ -578,7 +614,8 @@ const Purchases = () => {
                                                             </Button>
                                                         </td>
                                                     </tr>
-                                                ))}
+                                                    );
+                                                })}
                                             </tbody>
                                             <tfoot className="bg-gray-50 border-t border-gray-200">
                                                 <tr>
@@ -609,6 +646,75 @@ const Purchases = () => {
                             <Button onClick={handleSavePurchase} className="h-14 px-12 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-accent/20 hover:scale-[1.02] active:scale-[0.98] transition-all">Record Purchase Entry</Button>
                         </DialogFooter>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* View Purchase Details Modal */}
+            <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
+                <DialogContent className="max-w-[95vw] lg:max-w-4xl w-full rounded-[40px] p-0 border-none shadow-3xl overflow-hidden bg-white ring-1 ring-black/5 animate-in zoom-in-95 duration-300">
+                    {viewPurchase && (
+                        <div className="flex h-full flex-col max-h-[90vh] w-full min-w-0 overflow-hidden">
+                            <div className="p-8 pb-6 bg-gradient-to-r from-gray-50/50 to-white border-b border-gray-100 flex justify-between items-start">
+                                <div>
+                                    <DialogTitle className="text-2xl font-black tracking-tight text-gray-900">Purchase Details</DialogTitle>
+                                    <p className="text-sm text-gray-500 font-medium mt-1">Invoice #{viewPurchase.invoiceNo}</p>
+                                </div>
+                                <Badge className={getStatusBadge(viewPurchase.status)}>{viewPurchase.status}</Badge>
+                            </div>
+
+                            <ScrollArea className="flex-1 p-8">
+                                <div className="grid grid-cols-2 gap-6 mb-8">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Supplier</label>
+                                        <p className="text-base font-black text-gray-900">{viewPurchase.supplierName}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">GSTIN</label>
+                                        <p className="text-base font-mono text-gray-700">{viewPurchase.gstin || "URD"}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</label>
+                                        <p className="text-base font-semibold text-gray-700">{new Date(viewPurchase.date).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</label>
+                                        <p className="text-base font-black text-orange-600">₹{viewPurchase.totalAmount?.toLocaleString()}</p>
+                                    </div>
+                                </div>
+
+                                <div className="border border-gray-100 rounded-2xl overflow-hidden bg-white">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-50 border-b border-gray-100">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Item</th>
+                                                <th className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Type/Vol</th>
+                                                <th className="px-4 py-3 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
+                                                <th className="px-4 py-3 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Rate</th>
+                                                <th className="px-4 py-3 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">GST</th>
+                                                <th className="px-4 py-3 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-50">
+                                            {viewPurchase.items?.map((item: any, idx: number) => (
+                                                <tr key={idx} className="hover:bg-gray-50/50">
+                                                    <td className="px-4 py-3 font-semibold text-gray-900">{item.productName || 'Unknown Product'}</td>
+                                                    <td className="px-4 py-3 text-gray-500 font-medium">{item.sku}</td>
+                                                    <td className="px-4 py-3 text-center font-bold text-gray-700">{item.quantity}</td>
+                                                    <td className="px-4 py-3 text-right text-gray-700">₹{item.rate}</td>
+                                                    <td className="px-4 py-3 text-right text-gray-500 text-xs">{item.gstRate}%</td>
+                                                    <td className="px-4 py-3 text-right font-black text-orange-600">₹{item.total?.toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </ScrollArea>
+
+                            <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end">
+                                <Button onClick={() => setShowViewModal(false)} variant="outline" className="px-6 rounded-xl font-bold uppercase tracking-wider">Close</Button>
+                            </div>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>
