@@ -20,6 +20,7 @@ import DeliveryPartners from "./pages/DeliveryPartners";
 import CustomNotifications from "./pages/CustomNotifications";
 import AdminManagement from "./pages/AdminManagement";
 import Settings from "./pages/Settings";
+import Banners from "./pages/Banners";
 import NotFound from "./pages/NotFound";
 
 // Accounting & Finance Pages
@@ -63,6 +64,7 @@ const App = () => (
             <Route path="/notifications" element={makeProtected(CustomNotifications)} />
             <Route path="/admin-management" element={makeProtected(AdminManagement)} />
             <Route path="/settings" element={makeProtected(Settings)} />
+            <Route path="/banners" element={makeProtected(Banners)} />
 
             {/* Accounting & Finance routes */}
             <Route path="/finance" element={makeProtected(Finance)} />

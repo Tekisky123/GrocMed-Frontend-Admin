@@ -546,29 +546,38 @@ const Orders = () => {
 
               {/* Shipping Address */}
               {selectedOrder.shippingAddress && (() => {
+                let address: any = null;
                 try {
-                  const address = JSON.parse(selectedOrder.shippingAddress);
-                  return (
-                    <div className="p-5 rounded-2xl bg-gradient-to-br from-orange-50/50 to-orange-50/20 border border-orange-100">
-                      <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Delivery Address</h4>
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-gray-900">{address.fullName}</p>
-                            <p className="text-sm font-normal text-gray-700 mt-1">{address.streetAddress}</p>
-                            <p className="text-sm font-normal text-gray-700">{address.city}, {address.state} - {address.postalCode}</p>
-                            {address.phoneNumber && (
-                              <p className="text-xs font-normal text-gray-500 mt-1">📞 {address.phoneNumber}</p>
-                            )}
-                          </div>
+                  if (typeof selectedOrder.shippingAddress === 'string') {
+                    address = JSON.parse(selectedOrder.shippingAddress);
+                  } else {
+                    address = selectedOrder.shippingAddress;
+                  }
+                } catch (e) {
+                  address = { street: selectedOrder.shippingAddress };
+                }
+
+                if (!address) return null;
+
+                return (
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-orange-50/50 to-orange-50/20 border border-orange-100">
+                    <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Delivery Address</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-3">
+                        <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">{address.addressType || 'Home'}</p>
+                          <p className="text-sm font-normal text-gray-700 mt-1">{address.street || address.streetAddress || ''}</p>
+                          {(address.city || address.state || address.zip || address.postalCode) && (
+                            <p className="text-sm font-normal text-gray-700">
+                              {address.city}{address.state ? `, ${address.state}` : ''}{ (address.zip || address.postalCode) ? ` - ${address.zip || address.postalCode}` : ''}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
-                  );
-                } catch (e) {
-                  return null;
-                }
+                  </div>
+                );
               })()}
 
               {/* Items */}
