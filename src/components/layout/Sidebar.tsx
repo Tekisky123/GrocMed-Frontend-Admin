@@ -20,6 +20,7 @@ import {
   BarChart3,
   MapPin,
   MonitorPlay,
+  Clock,
 } from "lucide-react";
 import logo from "@/assets/logo-removebg-preview.png";
 

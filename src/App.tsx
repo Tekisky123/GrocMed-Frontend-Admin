@@ -77,7 +77,6 @@ const App = () => (
             <Route path="/statutory" element={makeProtected(StatutoryRegisters)} />
             <Route path="/reports" element={makeProtected(Reports)} />
 
-            {/* Operations */}
             <Route path="/pincodes" element={makeProtected(Pincodes)} />
 
             <Route path="*" element={<NotFound />} />
