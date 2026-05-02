@@ -43,6 +43,11 @@ export interface Customer {
         isDefault: boolean;
     }>;
     isActive: boolean;
+    shopName?: string;
+    licenseNumber?: string;
+    adhaar?: string;
+    adhaarImage?: string;
+    licenseImage?: string;
     fcmToken?: string;
     createdAt: string;
     updatedAt: string;

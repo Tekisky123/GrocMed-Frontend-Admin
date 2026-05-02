@@ -25,6 +25,7 @@ import {
   XCircle,
   Calendar,
   Package,
+  FileText,
 } from "lucide-react";
 import { customerApi, Customer } from "@/api/customerApi";
 import { toast } from "sonner";
@@ -448,6 +449,61 @@ const CustomerDetailsModal = ({ customerId, onClose }: { customerId: string; onC
               <span className={`text-sm font-semibold ${customer.isActive ? 'text-green-700' : 'text-gray-600'}`}>
                 {customer.isActive ? 'Active Account' : 'Inactive Account'}
               </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Business & Documents */}
+        <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50/50 to-indigo-50/20 border border-indigo-100">
+          <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Business & Verification</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Shop Details</p>
+              <div className="flex items-center gap-3">
+                <Package className="w-4 h-4 text-indigo-500" />
+                <span className="text-sm font-semibold text-gray-900">{customer.shopName || "Not Provided"}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-gray-400">License:</span>
+                <span className="text-sm font-normal text-gray-700">{customer.licenseNumber || "N/A"}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-gray-400">Aadhaar:</span>
+                <span className="text-sm font-normal text-gray-700">{customer.adhaar || "N/A"}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Documents</p>
+              <div className="flex flex-col gap-2">
+                {customer.adhaarImage ? (
+                  <a 
+                    href={customer.adhaarImage} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-xs text-blue-600 hover:underline bg-blue-50 p-2 rounded-lg border border-blue-100"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-blue-500" />
+                    View Aadhaar Card
+                  </a>
+                ) : (
+                  <span className="text-[10px] text-gray-400 italic">Aadhaar image missing</span>
+                )}
+                
+                {customer.licenseImage ? (
+                  <a 
+                    href={customer.licenseImage} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-xs text-blue-600 hover:underline bg-blue-50 p-2 rounded-lg border border-blue-100"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-blue-500" />
+                    View Shop License
+                  </a>
+                ) : (
+                  <span className="text-[10px] text-gray-400 italic">License image missing</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
