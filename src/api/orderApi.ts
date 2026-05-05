@@ -24,6 +24,14 @@ export const orderApi = {
         const response = await axiosInstance.put(`/api/admin/order/updateStatus/${id}`, { status, deliveryPartnerId });
         return response.data;
     },
+
+    // Download order invoice PDF from backend
+    downloadInvoice: async (id: string) => {
+        const response = await axiosInstance.get(`/api/order/${id}/invoice`, {
+            responseType: 'blob'
+        });
+        return response.data;
+    },
 };
 
 // Type definitions for orders

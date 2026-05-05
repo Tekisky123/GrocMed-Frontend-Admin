@@ -34,11 +34,13 @@ import {
   CheckCircle2,
   XCircle,
   Truck,
+  Download,
 } from "lucide-react";
 import { orderApi, Order } from "@/api/orderApi";
 import { deliveryPartnerApi } from "@/api/deliveryPartnerApi";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { downloadOrderInvoicePDF } from "@/utils/exportOrderPdfUtils";
 
 const Orders = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -285,6 +287,15 @@ const Orders = () => {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => downloadOrderInvoicePDF(order)}
+                          className="h-9 w-9 p-0 rounded-xl border-orange-200 text-orange-600 hover:bg-orange-50 transition-all"
+                          title="Download Invoice"
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => {
                             setSelectedOrder(order);
                             setNewStatus(order.orderStatus);
@@ -467,7 +478,7 @@ const Orders = () => {
       {selectedOrder && !showStatusModal && (
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
           <DialogContent className="max-w-3xl rounded-[32px] p-0 border-none shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="bg-gradient-to-br from-white via-primary/5 to-white px-8 pt-8 pb-6 rounded-t-[32px]">
+            <div className="bg-gradient-to-br from-white via-primary/5 to-white px-8 pt-8 pb-6 rounded-t-[32px] flex justify-between items-start">
               <DialogHeader>
                 <DialogTitle className="text-3xl font-black bg-gradient-to-r from-primary to-green-600 bg-clip-text text-transparent">
                   Order Details
@@ -476,6 +487,13 @@ const Orders = () => {
                   Order #{selectedOrder._id.slice(-8).toUpperCase()}
                 </p>
               </DialogHeader>
+              <Button
+                variant="outline"
+                onClick={() => downloadOrderInvoicePDF(selectedOrder)}
+                className="rounded-2xl border-orange-200 text-orange-600 gap-2 font-bold uppercase text-[10px] tracking-widest bg-white shadow-sm hover:bg-orange-50"
+              >
+                <Download className="w-4 h-4" /> Download Invoice
+              </Button>
             </div>
 
             <div className="px-8 pb-8 space-y-6">
