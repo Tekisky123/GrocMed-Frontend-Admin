@@ -559,6 +559,23 @@ const Orders = () => {
                       </div>
                     </div>
                   )}
+                  {selectedOrder.codCollectionDetails && selectedOrder.codCollectionDetails.method !== 'None' && (
+                    <div className="flex flex-col gap-3 pt-3 mt-3 border-t border-green-100 bg-gray-50/50 p-3 rounded-xl">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-tight">COD Collection Detail</span>
+                        <Badge className="px-3 py-1 rounded-full font-black text-[10px] uppercase bg-green-100 text-green-700 border-green-200">
+                          {selectedOrder.codCollectionDetails.method} Received
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-[10px] font-medium text-gray-400">
+                          Collected on {new Date(selectedOrder.codCollectionDetails.collectedAt).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

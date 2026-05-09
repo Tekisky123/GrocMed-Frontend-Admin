@@ -72,6 +72,11 @@ export interface Order {
         description?: string;
         _id: string;
     }>;
+    codCollectionDetails?: {
+        method: string;
+        collectedAt?: string;
+        paymentScreenshot?: string;
+    };
     createdAt: string;
     updatedAt: string;
     __v: number;
