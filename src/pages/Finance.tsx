@@ -39,7 +39,7 @@ const Finance = () => {
     const [loading, setLoading] = useState(true);
 
     // Form State: Cash Entry
-    const [cashType, setCashType] = useState("Receipt");
+    const [cashType, setCashType] = useState<"Receipt" | "Payment" | "Journal" | "Contra">("Receipt");
     const [cashNarration, setCashNarration] = useState("");
     const [cashAmount, setCashAmount] = useState("");
     const [cashCategory, setCashCategory] = useState(""); // Ledger ID for the other side
@@ -53,10 +53,10 @@ const Finance = () => {
 
     // Form State: Ledger
     const [ledgerName, setLedgerName] = useState("");
-    const [ledgerGroup, setLedgerGroup] = useState("Asset");
+    const [ledgerGroup, setLedgerGroup] = useState<Ledger["group"]>("Asset");
     const [ledgerSubGroup, setLedgerSubGroup] = useState("");
     const [openingBalance, setOpeningBalance] = useState("0");
-    const [openingBalanceType, setOpeningBalanceType] = useState("Dr");
+    const [openingBalanceType, setOpeningBalanceType] = useState<Ledger["openingBalanceType"]>("Dr");
 
     const fetchFinanceData = async () => {
         setLoading(true);
@@ -121,7 +121,7 @@ const Finance = () => {
             const debitLedger = cashType === "Receipt" ? cashLedger._id : cashCategory;
             const creditLedger = cashType === "Receipt" ? cashCategory : cashLedger._id;
 
-            const payload = {
+            const payload: Partial<JournalEntry> = {
                 date: new Date().toISOString(),
                 voucherNo: `CSH/${Date.now().toString().slice(-6)}`,
                 type: cashType,
@@ -149,7 +149,7 @@ const Finance = () => {
         if (jvDebit === jvCredit) return toast.error("Debit and Credit accounts cannot be the same");
 
         try {
-            const payload = {
+            const payload: Partial<JournalEntry> = {
                 date: new Date(jvDate).toISOString(),
                 voucherNo: `JV/${Date.now().toString().slice(-6)}`,
                 type: "Journal",
@@ -483,7 +483,7 @@ const Finance = () => {
                     <div className="space-y-4 py-4">
                         <div>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Transaction Type</p>
-                            <Select value={cashType} onValueChange={setCashType}>
+                            <Select value={cashType} onValueChange={(val) => setCashType(val as any)}>
                                 <SelectTrigger className="h-12 rounded-2xl border-gray-100 bg-gray-50/50">
                                     <SelectValue />
                                 </SelectTrigger>
@@ -590,7 +590,7 @@ const Finance = () => {
                         </div>
                         <div>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Group</p>
-                            <Select value={ledgerGroup} onValueChange={setLedgerGroup}>
+                            <Select value={ledgerGroup} onValueChange={(val) => setLedgerGroup(val as Ledger["group"])}>
                                 <SelectTrigger className="h-12 rounded-2xl border-gray-100 bg-gray-50/50">
                                     <SelectValue />
                                 </SelectTrigger>
@@ -614,7 +614,7 @@ const Finance = () => {
                             </div>
                             <div>
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Type</p>
-                                <Select value={openingBalanceType} onValueChange={setOpeningBalanceType}>
+                                <Select value={openingBalanceType} onValueChange={(val) => setOpeningBalanceType(val as Ledger["openingBalanceType"])}>
                                     <SelectTrigger className="h-12 rounded-2xl border-gray-100 bg-gray-50/50">
                                         <SelectValue />
                                     </SelectTrigger>

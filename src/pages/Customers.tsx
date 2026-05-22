@@ -454,55 +454,131 @@ const CustomerDetailsModal = ({ customerId, onClose }: { customerId: string; onC
         </div>
 
         {/* Business & Documents */}
-        <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50/50 to-indigo-50/20 border border-indigo-100">
-          <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Business & Verification</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Shop Details</p>
-              <div className="flex items-center gap-3">
-                <Package className="w-4 h-4 text-indigo-500" />
-                <span className="text-sm font-semibold text-gray-900">{customer.shopName || "Not Provided"}</span>
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-50/40 via-white to-blue-50/20 border border-indigo-100/80 shadow-sm space-y-6">
+          <div>
+            <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-1">Business & Verification</h4>
+            <p className="text-xs text-gray-500 font-normal">Customer identity and shop registration status.</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Shop & Identity Details */}
+            <div className="p-4 rounded-2xl bg-gray-50/50 border border-gray-100/80 space-y-4 md:col-span-1">
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Shop Details</p>
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                  <span className="text-sm font-semibold text-gray-900 truncate">{customer.shopName || "Not Provided"}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-gray-400">License:</span>
-                <span className="text-sm font-normal text-gray-700">{customer.licenseNumber || "N/A"}</span>
+              <div className="border-t border-gray-100 pt-3">
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Aadhaar Number</p>
+                <span className="text-sm font-semibold text-gray-800">{customer.adhaar || "N/A"}</span>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-gray-400">Aadhaar:</span>
-                <span className="text-sm font-normal text-gray-700">{customer.adhaar || "N/A"}</span>
+              <div className="border-t border-gray-100 pt-3">
+                <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Shop License / GST</p>
+                <span className="text-sm font-semibold text-gray-800">{customer.licenseNumber || "N/A"}</span>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Documents</p>
-              <div className="flex flex-col gap-2">
-                {customer.adhaarImage ? (
-                  <a 
-                    href={customer.adhaarImage} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="flex items-center gap-2 text-xs text-blue-600 hover:underline bg-blue-50 p-2 rounded-lg border border-blue-100"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-blue-500" />
-                    View Aadhaar Card
-                  </a>
-                ) : (
-                  <span className="text-[10px] text-gray-400 italic">Aadhaar image missing</span>
-                )}
-                
-                {customer.licenseImage ? (
-                  <a 
-                    href={customer.licenseImage} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="flex items-center gap-2 text-xs text-blue-600 hover:underline bg-blue-50 p-2 rounded-lg border border-blue-100"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-blue-500" />
-                    View Shop License
-                  </a>
-                ) : (
-                  <span className="text-[10px] text-gray-400 italic">License image missing</span>
-                )}
+            {/* Documents Section */}
+            <div className="md:col-span-2 space-y-3">
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Verification Documents</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Aadhaar Card Card */}
+                <div className="p-4 rounded-2xl border border-gray-100 bg-white shadow-sm flex flex-col justify-between space-y-3 group/doc hover:border-blue-200 transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-blue-500" />
+                      Aadhaar Card
+                    </span>
+                    {customer.adhaarImage && (
+                      <Badge className="bg-green-50 text-green-700 border border-green-200 text-[9px] uppercase font-bold tracking-wider px-2 py-0.5">
+                        Uploaded
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {customer.adhaarImage ? (
+                    <div className="relative aspect-[3/2] w-full rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center group-hover/doc:shadow-md transition-shadow duration-300">
+                      <img 
+                        src={customer.adhaarImage} 
+                        alt="Aadhaar Card" 
+                        className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-[3/2] w-full rounded-xl bg-gray-50 border border-dashed border-gray-200 flex flex-col items-center justify-center p-3 text-center">
+                      <XCircle className="w-6 h-6 text-gray-300 mb-1" />
+                      <span className="text-xs text-gray-400 font-medium">Aadhaar card image missing</span>
+                    </div>
+                  )}
+
+                  {customer.adhaarImage && (
+                    <div className="flex gap-2">
+                      <a 
+                        href={customer.adhaarImage} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium text-xs rounded-xl transition-colors border border-blue-100/50 text-center"
+                      >
+                        View Full Image
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Shop License Card */}
+                <div className="p-4 rounded-2xl border border-gray-100 bg-white shadow-sm flex flex-col justify-between space-y-3 group/doc hover:border-blue-200 transition-all duration-300">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-purple-500" />
+                      Shop License / GST
+                    </span>
+                    {customer.licenseImage ? (
+                      <Badge className="bg-green-50 text-green-700 border border-green-200 text-[9px] uppercase font-bold tracking-wider px-2 py-0.5">
+                        Uploaded
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-yellow-50 text-yellow-700 border border-yellow-200 text-[9px] uppercase font-bold tracking-wider px-2 py-0.5">
+                        Optional
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {customer.licenseImage ? (
+                    <div className="relative aspect-[3/2] w-full rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center group-hover/doc:shadow-md transition-shadow duration-300">
+                      <img 
+                        src={customer.licenseImage} 
+                        alt="Shop License" 
+                        className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-[3/2] w-full rounded-xl bg-gray-50 border border-dashed border-gray-200 flex flex-col items-center justify-center p-3 text-center">
+                      <XCircle className="w-6 h-6 text-gray-300 mb-1" />
+                      <span className="text-xs text-gray-400 font-medium">License image missing</span>
+                    </div>
+                  )}
+
+                  {customer.licenseImage && (
+                    <div className="flex gap-2">
+                      <a 
+                        href={customer.licenseImage} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium text-xs rounded-xl transition-colors border border-blue-100/50 text-center"
+                      >
+                        View Full Image
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

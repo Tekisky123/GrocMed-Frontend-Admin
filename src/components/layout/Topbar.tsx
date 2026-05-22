@@ -70,7 +70,7 @@ export const Topbar: React.FC<TopbarProps> = ({ open, onMenuClick }) => {
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-gray-50" />
             <DropdownMenuItem
-              onClick={logout}
+              onClick={() => logout()}
               className="rounded-[14px] py-3 px-3.5 text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer transition-all group"
             >
               <LogOut className="w-5 h-5 mr-3 group-hover:translate-x-1 transition-transform" />

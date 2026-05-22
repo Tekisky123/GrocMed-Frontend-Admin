@@ -33,6 +33,8 @@ export interface JournalEntry {
         debit: number;
         credit: number;
     }>;
+    totalAmount: number;
+    status: "Draft" | "Posted" | "Cancelled";
 }
 
 export interface Employee {

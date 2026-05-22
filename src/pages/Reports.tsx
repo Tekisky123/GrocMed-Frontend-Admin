@@ -114,7 +114,7 @@ const Reports = () => {
             dataToExport.push({ Category: "", Amount: "" });
 
             dataToExport.push({ Category: "COST OF GOODS SOLD", Amount: "" });
-            (pnlData?.cogs || []).forEach((c: any) => dataToExport.push({ Category: `  ${c.ledger}`, Amount: i.amount }));
+            (pnlData?.cogs || []).forEach((c: any) => dataToExport.push({ Category: `  ${c.ledger}`, Amount: c.amount }));
             dataToExport.push({ Category: "GROSS PROFIT", Amount: grossProfit });
             dataToExport.push({ Category: "", Amount: "" });
 

@@ -32,6 +32,8 @@ import {
   Loader2,
   UserPlus,
   MapPin,
+  Edit,
+  Trash2,
 } from "lucide-react";
 import { deliveryPartnerApi } from "@/api/deliveryPartnerApi";
 import { toast } from "sonner";
@@ -44,8 +46,18 @@ const DeliveryPartners = () => {
   const [editingPartner, setEditingPartner] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [phoneVal, setPhoneVal] = useState("");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [partnerToDelete, setPartnerToDelete] = useState<any>(null);
   const itemsPerPage = 10;
   const queryClient = useQueryClient();
+
+  const handleOpenEditModal = (partner: any) => {
+    setEditingPartner(partner);
+    setPhoneVal(partner.phone || "");
+    setShowAddModal(true);
+    setSelectedPartner(null);
+  };
 
   // Fetch delivery partners with React Query
   const { data: partnersResponse, isLoading } = useQuery({
@@ -101,6 +113,26 @@ const DeliveryPartners = () => {
     },
   });
 
+  // Delete Partner Mutation
+  const deleteMutation = useMutation({
+    mutationFn: deliveryPartnerApi.deletePartner,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deliveryPartners'] });
+      toast.success("Partner deleted successfully!");
+      setShowDeleteModal(false);
+      setPartnerToDelete(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || "Failed to delete partner");
+    },
+  });
+
+  const handleDelete = () => {
+    if (partnerToDelete) {
+      deleteMutation.mutate(partnerToDelete._id);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -116,7 +148,11 @@ const DeliveryPartners = () => {
 
     if (!name?.trim()) errors.name = "Name is required";
     if (!email?.trim()) errors.email = "Email is required";
-    if (!phone?.trim()) errors.phone = "Phone is required";
+    if (!phone?.trim()) {
+      errors.phone = "Phone is required";
+    } else if (phone.length !== 10) {
+      errors.phone = "Phone number must be exactly 10 digits";
+    }
     if (!editingPartner && !password?.trim()) errors.password = "Password is required";
     if (!vehicleType?.trim()) errors.vehicleType = "Vehicle type is required";
     if (!vehicleNumber?.trim()) errors.vehicleNumber = "Vehicle number is required";
@@ -145,6 +181,11 @@ const DeliveryPartners = () => {
     }
 
     if (editingPartner) {
+      const status = formData.get('status') as string;
+      const isActive = formData.get('isActive') === 'true';
+      partnerData.status = status;
+      partnerData.isActive = isActive;
+      
       updateMutation.mutate({ id: editingPartner._id, data: partnerData });
     } else {
       createMutation.mutate(partnerData);
@@ -155,6 +196,7 @@ const DeliveryPartners = () => {
     setShowAddModal(false);
     setEditingPartner(null);
     setFormErrors({});
+    setPhoneVal("");
   };
 
   return (
@@ -166,7 +208,11 @@ const DeliveryPartners = () => {
           <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Manage your delivery partners.</p>
         </div>
         <Button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => {
+            setEditingPartner(null);
+            setPhoneVal("");
+            setShowAddModal(true);
+          }}
           className="bg-gradient-to-r from-accent to-orange-500 hover:from-accent/90 hover:to-orange-500/90 text-white font-normal rounded-2xl h-11 px-6 shadow-lg shadow-accent/30 transition-all active:scale-95"
         >
           <UserPlus className="w-5 h-5 mr-2" />
@@ -291,15 +337,36 @@ const DeliveryPartners = () => {
                       </Badge>
                     </td>
                     <td className="px-6 py-5 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedPartner(partner)}
-                        className="h-9 px-4 rounded-xl font-normal text-xs uppercase text-accent hover:bg-accent/5 transition-all"
-                      >
-                        View Details
-                        <ChevronRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedPartner(partner)}
+                          className="h-9 px-4 rounded-xl font-normal text-xs uppercase text-accent hover:bg-accent/5 transition-all"
+                        >
+                          View Details
+                          <ChevronRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenEditModal(partner)}
+                          className="h-9 px-3 rounded-xl font-normal text-xs uppercase text-blue-600 hover:bg-blue-50 transition-all"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setPartnerToDelete(partner);
+                            setShowDeleteModal(true);
+                          }}
+                          className="h-9 px-3 rounded-xl font-normal text-xs uppercase text-red-600 hover:bg-red-50 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -395,7 +462,10 @@ const DeliveryPartners = () => {
                 >
                   Close Audit
                 </Button>
-                <Button className="flex-1 h-14 rounded-2xl bg-primary hover:bg-primary/90 text-white font-normal text-xs uppercase shadow-lg shadow-primary/20 transition-all active:scale-95">
+                <Button
+                  onClick={() => handleOpenEditModal(selectedPartner)}
+                  className="flex-1 h-14 rounded-2xl bg-primary hover:bg-primary/90 text-white font-normal text-xs uppercase shadow-lg shadow-primary/20 transition-all active:scale-95"
+                >
                   Update Profile
                 </Button>
               </div>
@@ -466,9 +536,13 @@ const DeliveryPartners = () => {
                       <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <Input
                         name="phone"
-                        defaultValue={editingPartner?.phone}
+                        value={phoneVal}
+                        onChange={(e) => {
+                          const cleanVal = e.target.value.replace(/\D/g, "").slice(0, 10);
+                          setPhoneVal(cleanVal);
+                        }}
                         className={`h-12 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white pl-10 ${formErrors.phone ? 'border-red-500 ring-1 ring-red-500' : ''}`}
-                        placeholder="+91 9876543210"
+                        placeholder="9876543210"
                       />
                     </div>
                     {formErrors.phone && <p className="text-[10px] text-red-500 ml-1">{formErrors.phone}</p>}
@@ -548,6 +622,49 @@ const DeliveryPartners = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Status & Accessibility - Only shown in edit mode */}
+              {editingPartner && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 px-1">
+                    <Zap className="w-4 h-4 text-accent" />
+                    <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest">Status & Accessibility</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">
+                        Duty Status
+                      </Label>
+                      <Select name="status" defaultValue={editingPartner?.status || "Offline"}>
+                        <SelectTrigger className="h-12 rounded-2xl border-gray-100 bg-gray-50/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Available">✅ Available</SelectItem>
+                          <SelectItem value="Busy">🔴 Busy</SelectItem>
+                          <SelectItem value="Offline">⚫ Offline</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">
+                        Account Status
+                      </Label>
+                      <Select name="isActive" defaultValue={editingPartner?.isActive ? "true" : "false"}>
+                        <SelectTrigger className="h-12 rounded-2xl border-gray-100 bg-gray-50/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="true">🟢 Active</SelectItem>
+                          <SelectItem value="false">🔴 Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <DialogFooter className="flex flex-col sm:flex-row gap-3 mt-8 pt-6 border-t border-gray-100">
@@ -576,6 +693,63 @@ const DeliveryPartners = () => {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="max-w-md rounded-[32px] p-8 border-none shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">
+              Delete Delivery Partner?
+            </DialogTitle>
+            <p className="text-sm text-gray-500 font-normal mt-1">
+              This action cannot be undone and will remove this partner from the fleet.
+            </p>
+          </DialogHeader>
+
+          {partnerToDelete && (
+            <div className="py-4">
+              <div className="p-4 rounded-2xl bg-red-50/50 border border-red-100">
+                <p className="text-sm font-semibold text-gray-900">{partnerToDelete.name}</p>
+                <p className="text-xs text-gray-600 mt-1">{partnerToDelete.email}</p>
+                <p className="text-xs text-gray-600">{partnerToDelete.phone}</p>
+                <p className="text-xs text-gray-600 mt-1 uppercase font-bold text-red-600">{partnerToDelete.vehicleType} - {partnerToDelete.vehicleNumber}</p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowDeleteModal(false);
+                setPartnerToDelete(null);
+              }}
+              disabled={deleteMutation.isPending}
+              className="flex-1 h-12 rounded-2xl border-gray-100 font-normal uppercase text-xs tracking-widest text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              className="flex-1 h-12 rounded-2xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-normal uppercase text-xs tracking-widest shadow-lg shadow-red-500/30 transition-all active:scale-95"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Partner
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

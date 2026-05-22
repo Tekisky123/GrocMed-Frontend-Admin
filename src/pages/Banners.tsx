@@ -282,7 +282,7 @@ const Banners = () => {
         onClose={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete && deleteMutation.mutate(confirmDelete)}
         title="Delete Banner?"
-        message="Are you sure you want to delete this banner? This action cannot be undone."
+        description="Are you sure you want to delete this banner? This action cannot be undone."
         confirmText="Yes, Delete"
         cancelText="No, Keep it"
         variant="destructive"
