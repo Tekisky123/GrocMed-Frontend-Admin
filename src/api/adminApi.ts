@@ -81,4 +81,8 @@ export const adminApi = {
         const response = await axiosInstance.delete(`/api/admin/pincodes/${id}`);
         return response.data;
     },
+    sendWhatsAppCampaign: async (data: { campaignName: string; templateParams?: string[]; targetAudience: string; specificNumbers?: string }) => {
+        const response = await axiosInstance.post("/api/admin/notification/send-whatsapp-campaign", data);
+        return response.data;
+    },
 };
