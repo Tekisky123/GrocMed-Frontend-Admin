@@ -37,8 +37,8 @@ import Pincodes from "./pages/Pincodes";
 
 const queryClient = new QueryClient();
 
-const makeProtected = (Component: React.ComponentType) => (
-  <ProtectedRoute>
+const makeProtected = (Component: React.ComponentType, requiredRole?: string) => (
+  <ProtectedRoute requiredRole={requiredRole}>
     <MainLayout>
       <Component />
     </MainLayout>
@@ -62,22 +62,22 @@ const App = () => (
             <Route path="/customers" element={makeProtected(Customers)} />
             <Route path="/delivery-partners" element={makeProtected(DeliveryPartners)} />
             <Route path="/notifications" element={makeProtected(CustomNotifications)} />
-            <Route path="/admin-management" element={makeProtected(AdminManagement)} />
-            <Route path="/settings" element={makeProtected(Settings)} />
-            <Route path="/banners" element={makeProtected(Banners)} />
+            <Route path="/admin-management" element={makeProtected(AdminManagement, "super_admin")} />
+            <Route path="/settings" element={makeProtected(Settings, "super_admin")} />
+            <Route path="/banners" element={makeProtected(Banners, "super_admin")} />
 
             {/* Accounting & Finance routes */}
-            <Route path="/finance" element={makeProtected(Finance)} />
+            <Route path="/finance" element={makeProtected(Finance, "super_admin")} />
             <Route path="/purchases" element={makeProtected(Purchases)} />
-            <Route path="/sales-register" element={makeProtected(SalesRegister)} />
+            <Route path="/sales-register" element={makeProtected(SalesRegister, "super_admin")} />
             <Route path="/inventory" element={makeProtected(Inventory)} />
             <Route path="/gst" element={makeProtected(GSTModule)} />
-            <Route path="/payroll" element={makeProtected(Payroll)} />
-            <Route path="/assets" element={makeProtected(FixedAssets)} />
-            <Route path="/statutory" element={makeProtected(StatutoryRegisters)} />
-            <Route path="/reports" element={makeProtected(Reports)} />
+            <Route path="/payroll" element={makeProtected(Payroll, "super_admin")} />
+            <Route path="/assets" element={makeProtected(FixedAssets, "super_admin")} />
+            <Route path="/statutory" element={makeProtected(StatutoryRegisters, "super_admin")} />
+            <Route path="/reports" element={makeProtected(Reports, "super_admin")} />
 
-            <Route path="/pincodes" element={makeProtected(Pincodes)} />
+            <Route path="/pincodes" element={makeProtected(Pincodes, "super_admin")} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

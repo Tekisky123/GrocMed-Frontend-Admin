@@ -33,6 +33,7 @@ const AdminManagement = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [role, setRole] = useState("admin");
   const itemsPerPage = 10;
 
   // Fetch all admins
@@ -103,6 +104,7 @@ const AdminManagement = () => {
     const name = data.name as string;
     const email = data.email as string;
     const password = data.password as string;
+    const isActive = editingUser ? (formData.get("isActive") === "on") : true;
 
     const errors: Record<string, string> = {};
     if (!name?.trim()) errors.name = "Full name is required";
@@ -117,10 +119,14 @@ const AdminManagement = () => {
 
     setFormErrors({});
 
+    const payload: any = { name, email, role };
+    if (password) payload.password = password;
+    if (editingUser) payload.isActive = isActive;
+
     if (showAddModal) {
-      createMutation.mutate(data);
+      createMutation.mutate(payload);
     } else if (editingUser && selectedUser) {
-      updateMutation.mutate({ id: selectedUser._id, data });
+      updateMutation.mutate({ id: selectedUser._id, data: payload });
     }
   };
 
@@ -141,6 +147,7 @@ const AdminManagement = () => {
         <Button
           onClick={() => {
             setSelectedUser(null);
+            setRole("admin");
             setShowAddModal(true);
           }}
           className="bg-accent hover:bg-accent/90 text-white font-normal rounded-2xl h-11 px-6 shadow-lg shadow-accent/20 transition-all active:scale-95"
@@ -224,7 +231,7 @@ const AdminManagement = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => { setSelectedUser(user); setEditingUser(true); }}
+                        onClick={() => { setSelectedUser(user); setRole(user.role || "admin"); setEditingUser(true); }}
                         className="h-10 w-10 rounded-xl text-accent hover:bg-accent/5 p-0"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -326,7 +333,7 @@ const AdminManagement = () => {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[10px] font-normal text-gray-400 uppercase tracking-widest ml-1">Role</Label>
-                    <Select name="role" defaultValue={selectedUser?.role || "admin"}>
+                    <Select value={role} onValueChange={setRole}>
                       <SelectTrigger className="h-12 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white font-normal">
                         <SelectValue placeholder="Select Role" />
                       </SelectTrigger>

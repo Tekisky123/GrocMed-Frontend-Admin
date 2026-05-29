@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -58,6 +59,31 @@ const navItems: NavItem[] = [
 
 export const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
   const location = useLocation();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "super_admin";
+
+  const filteredNavItems = navItems.filter((item) => {
+    if (item.type === "section") return true;
+
+    const superAdminRoutes = [
+      "/admin-management",
+      "/pincodes",
+      "/banners",
+      "/settings",
+      "/finance",
+      "/sales-register",
+      "/payroll",
+      "/assets",
+      "/statutory",
+      "/reports"
+    ];
+
+    if (superAdminRoutes.includes(item.href)) {
+      return isSuperAdmin;
+    }
+
+    return true;
+  });
 
   // Close sidebar on navigation for mobile
   useEffect(() => {
@@ -114,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
 
         {/* Navigation */}
         <nav className="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar space-y-1">
-          {navItems.map((item, idx) => {
+          {filteredNavItems.map((item, idx) => {
             if (item.type === "section") {
               return (
                 <div key={`section-${idx}`} className={`pt-4 pb-1.5 transition-all duration-300 ${!open ? "opacity-0 invisible lg:opacity-100 lg:visible" : "opacity-100 visible"}`}>
