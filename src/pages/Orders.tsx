@@ -50,6 +50,7 @@ const Orders = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState("");
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
+  const [cancellationReason, setCancellationReason] = useState("Customer Cancelled");
   const itemsPerPage = 10;
   const queryClient = useQueryClient();
 
@@ -87,8 +88,8 @@ const Orders = () => {
 
   // Update order status mutation
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status, deliveryPartnerId }: { id: string; status: string; deliveryPartnerId?: string | null }) =>
-      orderApi.updateOrderStatus(id, status, deliveryPartnerId || undefined),
+    mutationFn: ({ id, status, deliveryPartnerId, cancellationReason }: { id: string; status: string; deliveryPartnerId?: string | null; cancellationReason?: string }) =>
+      orderApi.updateOrderStatus(id, status, deliveryPartnerId || undefined, cancellationReason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       toast.success("Order status updated and customer notified!");
@@ -107,6 +108,7 @@ const Orders = () => {
         id: selectedOrder._id,
         status: newStatus,
         deliveryPartnerId: selectedPartnerId,
+        cancellationReason: (newStatus === "Cancelled" || newStatus === "Returned") ? cancellationReason : undefined,
       });
     }
   };
@@ -131,6 +133,7 @@ const Orders = () => {
       case "Packed": return "bg-yellow-50 text-yellow-700 border-yellow-200";
       case "Placed": return "bg-accent/10 text-accent border-accent/20";
       case "Cancelled": return "bg-red-50 text-red-700 border-red-200";
+      case "Returned": return "bg-orange-50 text-orange-700 border-orange-200";
       default: return "bg-gray-50 text-gray-700 border-gray-200";
     }
   };
@@ -385,9 +388,27 @@ const Orders = () => {
                   <SelectItem value="Out for Delivery">🚚 Out for Delivery</SelectItem>
                   <SelectItem value="Delivered">✅ Delivered</SelectItem>
                   <SelectItem value="Cancelled">❌ Cancelled</SelectItem>
+                  <SelectItem value="Returned">🔄 Returned</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {(newStatus === "Cancelled" || newStatus === "Returned") && (
+              <div>
+                <p className="text-xs font-normal text-gray-400 uppercase tracking-widest mb-2">Select Reason</p>
+                <Select value={cancellationReason} onValueChange={setCancellationReason}>
+                  <SelectTrigger className="h-12 rounded-2xl border-gray-100 bg-gray-50/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Customer Cancelled">👤 Customer Cancelled</SelectItem>
+                    <SelectItem value="Out of Stock After Billing">📦 Out of Stock After Billing</SelectItem>
+                    <SelectItem value="Delivery Failed">🚚 Delivery Failed</SelectItem>
+                    <SelectItem value="Wrong Product Ordered">❌ Wrong Product Ordered</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div>
               <p className="text-xs font-normal text-gray-400 uppercase tracking-widest mb-3">Assign Delivery Partner</p>
@@ -544,6 +565,14 @@ const Orders = () => {
                       {selectedOrder.orderStatus}
                     </Badge>
                   </div>
+                  {selectedOrder.cancellationReason && selectedOrder.cancellationReason !== 'None' && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-normal text-gray-600">Cancellation/Return Reason</span>
+                      <Badge className="px-3 py-1.5 rounded-lg font-semibold text-[10px] uppercase bg-red-50 text-red-700 border-red-200">
+                        {selectedOrder.cancellationReason}
+                      </Badge>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-normal text-gray-600">Order Date</span>
                     <span className="text-sm font-semibold text-gray-900">

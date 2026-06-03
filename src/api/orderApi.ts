@@ -20,8 +20,8 @@ export const orderApi = {
     },
 
     // Update order status (triggers notification)
-    updateOrderStatus: async (id: string, status: string, deliveryPartnerId?: string) => {
-        const response = await axiosInstance.put(`/api/admin/order/updateStatus/${id}`, { status, deliveryPartnerId });
+    updateOrderStatus: async (id: string, status: string, deliveryPartnerId?: string, cancellationReason?: string) => {
+        const response = await axiosInstance.put(`/api/admin/order/updateStatus/${id}`, { status, deliveryPartnerId, cancellationReason });
         return response.data;
     },
 
@@ -62,7 +62,8 @@ export interface Order {
     cgstAmount?: number;
     sgstAmount?: number;
     igstAmount?: number;
-    orderStatus: 'Placed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
+    orderStatus: 'Placed' | 'Packed' | 'Shipped' | 'Out for Delivery' | 'Delivered' | 'Cancelled' | 'Returned';
+    cancellationReason?: string;
     paymentMethod: string;
     paymentStatus: string;
     shippingAddress: string; // JSON string that needs to be parsed
