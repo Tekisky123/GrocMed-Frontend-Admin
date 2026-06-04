@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Zap, Globe, ShieldAlert, Download, Loader2, Clock, Plus, Trash2, Edit2, Save, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { Zap, Globe, ShieldAlert, Download, Loader2, Clock, Plus, Trash2, Edit2, Save, X, CheckCircle2, QrCode, Upload, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/api/adminApi";
 import { deliverySlotApi, DeliverySlot } from "@/api/deliverySlotApi";
@@ -16,10 +16,14 @@ const Settings = () => {
     minOrderValue: 1000.00,
     freeDeliveryThreshold: 1500.00,
     maxOrdersPerDay: 50,
+    paymentQrUrl: null as string | null,
   });
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [qrUploading, setQrUploading] = useState(false);
+  const [qrRemoving, setQrRemoving] = useState(false);
+  const qrFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -34,12 +38,50 @@ const Settings = () => {
           minOrderValue: res.data.minOrderValue || 1000.00,
           freeDeliveryThreshold: res.data.freeDeliveryThreshold || 1500.00,
           maxOrdersPerDay: res.data.maxOrdersPerDay || 50,
+          paymentQrUrl: res.data.paymentQrUrl || null,
         });
       }
     } catch (e) {
       toast.error('Failed to load settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUploadQr = async (file: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Please select a valid image file'); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be less than 5MB'); return; }
+    setQrUploading(true);
+    try {
+      const res = await adminApi.uploadPaymentQr(file);
+      if (res.success) {
+        setSettings(prev => ({ ...prev, paymentQrUrl: res.data.paymentQrUrl }));
+        toast.success('Payment QR image uploaded successfully!');
+      } else {
+        toast.error(res.message || 'Upload failed');
+      }
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message || 'Failed to upload image');
+    } finally {
+      setQrUploading(false);
+      if (qrFileRef.current) qrFileRef.current.value = '';
+    }
+  };
+
+  const handleRemoveQr = async () => {
+    if (!confirm('Remove the current payment QR image?')) return;
+    setQrRemoving(true);
+    try {
+      const res = await adminApi.deletePaymentQr();
+      if (res.success) {
+        setSettings(prev => ({ ...prev, paymentQrUrl: null }));
+        toast.success('Payment QR image removed');
+      }
+    } catch (e) {
+      toast.error('Failed to remove image');
+    } finally {
+      setQrRemoving(false);
     }
   };
 
@@ -53,15 +95,21 @@ const Settings = () => {
   const saveSettings = async () => {
     setSaving(true);
     try {
-      const res = await adminApi.updateSettings(settings);
+      const res = await adminApi.updateSettings({
+        deliveryCharge: settings.deliveryCharge,
+        minOrderValue: settings.minOrderValue,
+        freeDeliveryThreshold: settings.freeDeliveryThreshold,
+        maxOrdersPerDay: settings.maxOrdersPerDay,
+      });
       if (res.success) {
         toast.success('Settings updated successfully!');
-        setSettings({
-            deliveryCharge: res.data.deliveryCharge,
-            minOrderValue: res.data.minOrderValue,
-            freeDeliveryThreshold: res.data.freeDeliveryThreshold,
-            maxOrdersPerDay: res.data.maxOrdersPerDay,
-        });
+        setSettings(prev => ({
+          ...prev,
+          deliveryCharge: res.data.deliveryCharge,
+          minOrderValue: res.data.minOrderValue,
+          freeDeliveryThreshold: res.data.freeDeliveryThreshold,
+          maxOrdersPerDay: res.data.maxOrdersPerDay,
+        }));
       }
     } catch (e) {
       toast.error('Failed to update Settings');
@@ -338,8 +386,106 @@ const Settings = () => {
               </div>
             </div>
           </Card>
+
+          {/* Payment QR Upload Card */}
+          <Card className="p-6 sm:p-8 border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100 space-y-6 mt-8">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-50 rounded-xl">
+                <QrCode className="w-5 h-5 text-orange-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Payment QR / UPI Image</h3>
+                <p className="text-[11px] text-gray-400 font-normal mt-0.5">Shown to delivery partners when collecting online payment at doorstep</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+              {/* Preview */}
+              <div className="space-y-3">
+                <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">Current Image</Label>
+                <div className={`relative w-full aspect-square rounded-3xl overflow-hidden border-2 flex items-center justify-center ${
+                  settings.paymentQrUrl
+                    ? 'border-orange-100 bg-orange-50/30'
+                    : 'border-dashed border-gray-200 bg-gray-50'
+                }`}>
+                  {settings.paymentQrUrl ? (
+                    <>
+                      <img
+                        src={settings.paymentQrUrl}
+                        alt="Payment QR"
+                        className="w-full h-full object-contain p-4"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        className="absolute top-3 right-3 w-8 h-8 rounded-xl shadow-md"
+                        onClick={handleRemoveQr}
+                        disabled={qrRemoving}
+                      >
+                        {qrRemoving ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-gray-300 p-6">
+                      <ImageOff className="w-10 h-10" />
+                      <p className="text-xs font-medium text-gray-400 text-center">No QR image uploaded yet</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Upload Zone */}
+              <div className="space-y-4">
+                <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">Upload New Image</Label>
+                <input
+                  ref={qrFileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadQr(f); }}
+                />
+                <div
+                  className="w-full aspect-square rounded-3xl border-2 border-dashed border-orange-200 bg-orange-50/20 hover:bg-orange-50/50 hover:border-orange-300 transition-all cursor-pointer flex flex-col items-center justify-center gap-3 p-6 group"
+                  onClick={() => !qrUploading && qrFileRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const f = e.dataTransfer.files?.[0];
+                    if (f) handleUploadQr(f);
+                  }}
+                >
+                  {qrUploading ? (
+                    <>
+                      <Loader2 className="w-10 h-10 text-orange-400 animate-spin" />
+                      <p className="text-sm font-bold text-orange-500">Uploading to cloud...</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="p-4 bg-orange-100 rounded-2xl group-hover:scale-105 transition-transform">
+                        <Upload className="w-8 h-8 text-orange-500" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-bold text-gray-700">Click or drag & drop</p>
+                        <p className="text-[11px] text-gray-400 mt-1">PNG, JPG, WEBP — max 5MB</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="p-4 bg-blue-50/40 rounded-2xl border border-blue-100/50 flex items-start gap-3">
+                  <ShieldAlert className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-[11px] text-blue-600 leading-relaxed font-normal">
+                    Upload your UPI QR code or bank payment details image. Delivery partners will see this when a customer pays online at the door. Replaces the default QR bundled in the app.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Card>
+
         </TabsContent>
 
+        {/* ─── Delivery Slots Tab ─── */}
         <TabsContent value="slots" className="mt-0 focus-visible:ring-0">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Slot List */}

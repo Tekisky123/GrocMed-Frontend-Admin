@@ -34,6 +34,18 @@ export const adminApi = {
         const response = await axiosInstance.put('/api/admin/settings', data);
         return response.data;
     },
+    uploadPaymentQr: async (file: File) => {
+        const formData = new FormData();
+        formData.append('image', file);
+        const response = await axiosInstance.post('/api/admin/settings/payment-qr', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return response.data;
+    },
+    deletePaymentQr: async () => {
+        const response = await axiosInstance.delete('/api/admin/settings/payment-qr');
+        return response.data;
+    },
     // Custom Notifications
     getAllNotifications: async (params?: any) => {
         const response = await axiosInstance.get("/api/admin/notification/all", { params });
