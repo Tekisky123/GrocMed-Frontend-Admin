@@ -63,13 +63,13 @@ const App = () => (
             <Route path="/delivery-partners" element={makeProtected(DeliveryPartners)} />
             <Route path="/notifications" element={makeProtected(CustomNotifications)} />
             <Route path="/admin-management" element={makeProtected(AdminManagement, "super_admin")} />
-            <Route path="/settings" element={makeProtected(Settings)} />
+            <Route path="/settings" element={makeProtected(Settings, "super_admin")} />
             <Route path="/banners" element={makeProtected(Banners, "super_admin")} />
 
             {/* Accounting & Finance routes */}
             <Route path="/finance" element={makeProtected(Finance, "super_admin")} />
             <Route path="/purchases" element={makeProtected(Purchases)} />
-            <Route path="/sales-register" element={makeProtected(SalesRegister)} />
+            <Route path="/sales-register" element={makeProtected(SalesRegister, "super_admin")} />
             <Route path="/inventory" element={makeProtected(Inventory)} />
             <Route path="/gst" element={makeProtected(GSTModule)} />
             <Route path="/payroll" element={makeProtected(Payroll, "super_admin")} />

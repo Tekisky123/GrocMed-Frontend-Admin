@@ -73,7 +73,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, setOpen }) => {
       "/payroll",
       "/assets",
       "/statutory",
-      "/reports"
+      "/reports",
+      "/settings",
+      "/sales-register"
     ];
 
     if (superAdminRoutes.includes(item.href)) {
