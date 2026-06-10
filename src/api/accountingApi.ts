@@ -3,6 +3,7 @@ import axiosInstance from './axiosConfig';
 const API_ROUTES = {
     FINANCE: '/api/admin/finance',
     PURCHASES: '/api/admin/purchases',
+    VENDORS: '/api/admin/vendors',
     INVENTORY: '/api/admin/inventory',
     PAYROLL: '/api/admin/payroll',
     ASSETS: '/api/admin/assets',
@@ -52,6 +53,15 @@ export interface ApiResponse<T> {
     success: boolean;
     data: T;
     message?: string;
+}
+
+export interface Vendor {
+    _id?: string;
+    name: string;
+    address?: string;
+    gstin?: string;
+    phone?: string;
+    createdAt?: string;
 }
 
 export const accountingApi = {
@@ -196,6 +206,24 @@ export const accountingApi = {
     },
     getCashFlow: async (startDate: string, endDate: string) => {
         const response = await axiosInstance.get(`${API_ROUTES.REPORTS}/cash-flow?startDate=${startDate}&endDate=${endDate}`);
+        return response.data;
+    },
+
+    // ---- 10. Vendors ----
+    getVendors: async (): Promise<ApiResponse<Vendor[]>> => {
+        const response = await axiosInstance.get(API_ROUTES.VENDORS);
+        return response.data;
+    },
+    createVendor: async (data: Partial<Vendor>): Promise<ApiResponse<Vendor>> => {
+        const response = await axiosInstance.post(API_ROUTES.VENDORS, data);
+        return response.data;
+    },
+    updateVendor: async (id: string, data: Partial<Vendor>): Promise<ApiResponse<Vendor>> => {
+        const response = await axiosInstance.put(`${API_ROUTES.VENDORS}/${id}`, data);
+        return response.data;
+    },
+    deleteVendor: async (id: string): Promise<ApiResponse<void>> => {
+        const response = await axiosInstance.delete(`${API_ROUTES.VENDORS}/${id}`);
         return response.data;
     }
 };

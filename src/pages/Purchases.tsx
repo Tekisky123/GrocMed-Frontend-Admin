@@ -24,7 +24,7 @@ import {
     Download, CheckCircle2, Clock, Info,
     Trash2, Calendar as CalendarIcon, Eye, Edit2, AlertTriangle
 } from "lucide-react";
-import { accountingApi } from "@/api/accountingApi";
+import { accountingApi, Vendor } from "@/api/accountingApi";
 import { productApi } from "@/api/productApi";
 import { exportToCSV } from "@/utils/exportUtils";
 import { downloadPurchaseInvoicePDF } from "@/utils/exportPurchasePdfUtils";
@@ -59,6 +59,16 @@ const Purchases = () => {
     const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+    // --- Vendors State ---
+    const [vendorsList, setVendorsList] = useState<Vendor[]>([]);
+    const [showVendorModal, setShowVendorModal] = useState(false);
+    const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+    const [newVendorName, setNewVendorName] = useState("");
+    const [newVendorGSTIN, setNewVendorGSTIN] = useState("");
+    const [newVendorAddress, setNewVendorAddress] = useState("");
+    const [newVendorPhone, setNewVendorPhone] = useState("");
+    const [deleteVendorId, setDeleteVendorId] = useState<string | null>(null);
+
     // --- Dynamic Data ---
     const [purchases, setPurchases] = useState<any[]>([]);
     const [allProducts, setAllProducts] = useState<any[]>([]);
@@ -87,6 +97,17 @@ const Purchases = () => {
         total: 0
     }]);
 
+    const fetchVendors = async () => {
+        try {
+            const res = await accountingApi.getVendors();
+            if (res.success) {
+                setVendorsList(res.data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch vendors:", error);
+        }
+    };
+
     const fetchPurchases = async () => {
         setLoading(true);
         try {
@@ -105,30 +126,97 @@ const Purchases = () => {
 
     useEffect(() => {
         fetchPurchases();
+        fetchVendors();
     }, []);
+
+    const handleSaveVendor = async () => {
+        if (!newVendorName || !newVendorName.trim()) {
+            return toast.error("Vendor Name is required");
+        }
+        try {
+            const payload = {
+                name: newVendorName.trim(),
+                gstin: newVendorGSTIN.trim().toUpperCase(),
+                address: newVendorAddress.trim(),
+                phone: newVendorPhone.trim(),
+            };
+
+            let savedVendor;
+            if (editingVendor?._id) {
+                const res = await accountingApi.updateVendor(editingVendor._id, payload);
+                savedVendor = res.data;
+                toast.success("Vendor updated successfully");
+            } else {
+                const res = await accountingApi.createVendor(payload);
+                savedVendor = res.data;
+                toast.success("Vendor created successfully");
+                
+                // Auto-populate when created during recording purchase
+                if (savedVendor) {
+                    setVendorName(savedVendor.name);
+                    setVendorGSTIN(savedVendor.gstin || "");
+                }
+            }
+            setShowVendorModal(false);
+            fetchVendors();
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to save vendor");
+        }
+    };
+
+    const handleEditVendor = (v: any) => {
+        setEditingVendor(v);
+        setNewVendorName(v.name);
+        setNewVendorGSTIN(v.gstin || "");
+        setNewVendorAddress(v.address || "");
+        setNewVendorPhone(v.phone || "");
+        setShowVendorModal(true);
+    };
+
+    const handleDeleteVendorClick = (id: string) => {
+        setDeleteVendorId(id);
+    };
+
+    const confirmDeleteVendor = async () => {
+        if (!deleteVendorId) return;
+        try {
+            await accountingApi.deleteVendor(deleteVendorId);
+            toast.success("Vendor deleted successfully");
+            fetchVendors();
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || "Failed to delete vendor");
+        } finally {
+            setDeleteVendorId(null);
+        }
+    };
     
     const vendors = useMemo(() => {
-        const vendorMap = new Map<string, any>();
-        purchases.forEach(p => {
-            const key = `${p.supplierName}::${p.gstin}`;
-            if (!vendorMap.has(key)) {
-                vendorMap.set(key, {
-                    name: p.supplierName,
-                    gstin: p.gstin,
-                    totalBusiness: 0,
-                    invoiceCount: 0,
-                    lastTransaction: p.date
-                });
-            }
-            const v = vendorMap.get(key);
-            v.totalBusiness += p.totalAmount || 0;
-            v.invoiceCount += 1;
-            if (new Date(p.date) > new Date(v.lastTransaction)) {
-                v.lastTransaction = p.date;
-            }
+        return vendorsList.map(v => {
+            let totalBusiness = 0;
+            let invoiceCount = 0;
+            let lastTransaction: string | null = null;
+            
+            purchases.forEach(p => {
+                const nameMatch = p.supplierName && v.name && p.supplierName.trim().toLowerCase() === v.name.trim().toLowerCase();
+                const gstinMatch = p.gstin && v.gstin && p.gstin.trim().toLowerCase() === v.gstin.trim().toLowerCase();
+                
+                if (nameMatch || (v.gstin && v.gstin !== 'URD' && gstinMatch)) {
+                    totalBusiness += p.totalAmount || 0;
+                    invoiceCount += 1;
+                    if (!lastTransaction || new Date(p.date) > new Date(lastTransaction)) {
+                        lastTransaction = p.date;
+                    }
+                }
+            });
+            
+            return {
+                ...v,
+                totalBusiness,
+                invoiceCount,
+                lastTransaction
+            };
         });
-        return Array.from(vendorMap.values());
-    }, [purchases]);
+    }, [vendorsList, purchases]);
 
     const addRow = () => {
         setItems([...items, {
@@ -500,35 +588,54 @@ const Purchases = () => {
             
             {activeView === "vendors" && (
                 <Card className="border-none shadow-2xl rounded-[32px] bg-white ring-1 ring-gray-100 overflow-hidden">
-                    <div className="px-8 py-7 border-b border-gray-100 flex items-center gap-4 bg-gray-50/30">
-                        <div className="flex-1 relative group">
+                    <div className="px-8 py-7 border-b border-gray-100 flex flex-col sm:flex-row items-center gap-4 bg-gray-50/30">
+                        <div className="flex-1 relative group w-full">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary transition-colors" />
                             <Input
-                                placeholder="Search by vendor name or gstin..."
+                                placeholder="Search by vendor name, gstin, phone or address..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="h-14 pl-12 rounded-2xl border-gray-100 bg-white shadow-inner focus:ring-primary/10"
                             />
                         </div>
+                        <Button 
+                            onClick={() => {
+                                setEditingVendor(null);
+                                setNewVendorName("");
+                                setNewVendorGSTIN("");
+                                setNewVendorAddress("");
+                                setNewVendorPhone("");
+                                setShowVendorModal(true);
+                            }}
+                            className="h-14 px-6 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold flex items-center gap-2 whitespace-nowrap w-full sm:w-auto"
+                        >
+                            <Plus className="w-5 h-5" />
+                            Add Vendor
+                        </Button>
                     </div>
                     <div className="rtable-wrap">
                         <table className="rtable border-collapse">
                             <thead>
                                 <tr className="bg-gray-50/80 border-b border-gray-100">
-                                    {["S.No", "Vendor", "GSTIN", "Invoices", "Total Business", "Last Transaction"].map(h => (
+                                    {["S.No", "Vendor", "GSTIN", "Phone", "Address", "Invoices", "Total Business", "Actions"].map(h => (
                                         <th key={h} className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {loading ? (
-                                    <tr><td colSpan={6} className="text-center py-20 text-gray-400 font-medium italic">Calculating metrics...</td></tr>
+                                    <tr><td colSpan={8} className="text-center py-20 text-gray-400 font-medium italic">Calculating metrics...</td></tr>
                                 ) : vendors.length === 0 ? (
-                                    <tr><td colSpan={6} className="text-center py-20 text-gray-400 italic">No vendors found in your purchase history.</td></tr>
+                                    <tr><td colSpan={8} className="text-center py-20 text-gray-400 italic">No vendors found. Add your first vendor above.</td></tr>
                                 ) : vendors
-                                    .filter(v => !search || v.name.toLowerCase().includes(search.toLowerCase()) || v.gstin.toLowerCase().includes(search.toLowerCase()))
+                                    .filter(v => !search || 
+                                        v.name.toLowerCase().includes(search.toLowerCase()) || 
+                                        v.gstin?.toLowerCase().includes(search.toLowerCase()) || 
+                                        v.phone?.toLowerCase().includes(search.toLowerCase()) || 
+                                        v.address?.toLowerCase().includes(search.toLowerCase())
+                                    )
                                     .map((v, idx) => (
-                                        <tr key={idx} className="hover:bg-orange-50/20 transition-all duration-200 group">
+                                        <tr key={v._id || idx} className="hover:bg-orange-50/20 transition-all duration-200 group">
                                             <td className="px-6 py-5 text-xs font-black text-gray-400">{idx + 1}</td>
                                             <td className="px-6 py-5">
                                                 <div className="flex items-center gap-3">
@@ -538,12 +645,33 @@ const Purchases = () => {
                                                     <span className="text-sm font-black text-gray-900">{v.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5 text-sm font-mono font-bold text-gray-500">{v.gstin}</td>
+                                            <td className="px-6 py-5 text-sm font-mono font-bold text-gray-500">{v.gstin || "URD"}</td>
+                                            <td className="px-6 py-5 text-sm font-semibold text-gray-500">{v.phone || "-"}</td>
+                                            <td className="px-6 py-5 text-sm text-gray-500 max-w-[200px] truncate" title={v.address}>{v.address || "-"}</td>
                                             <td className="px-6 py-5 text-sm font-black text-gray-700">{v.invoiceCount} Invoices</td>
                                             <td className="px-6 py-5">
                                                 <span className="text-sm font-black text-orange-600 bg-orange-50 px-3 py-1 rounded-full border border-orange-100">₹{v.totalBusiness?.toLocaleString()}</span>
                                             </td>
-                                            <td className="px-6 py-5 text-sm font-semibold text-gray-500">{new Date(v.lastTransaction).toLocaleDateString()}</td>
+                                            <td className="px-6 py-5 text-sm">
+                                                <div className="flex items-center gap-1">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        onClick={() => handleEditVendor(v)}
+                                                        className="h-8 w-8 rounded-xl hover:bg-orange-50 hover:text-orange-600 text-gray-400 transition-all"
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        onClick={() => handleDeleteVendorClick(v._id || "")}
+                                                        className="h-8 w-8 rounded-xl hover:bg-red-50 hover:text-red-600 text-gray-400 transition-all"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                             </tbody>
@@ -564,23 +692,56 @@ const Purchases = () => {
                                         <Info className="w-4 h-4 text-orange-500" /> Use the table below for multi-item invoices.
                                     </p>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-                                    <div className="w-full sm:w-64">
-                                        <label className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2 block ml-1">Vendor Name</label>
-                                        <Input 
-                                            value={vendorName} 
-                                            onChange={(e) => setVendorName(e.target.value)} 
-                                            placeholder="Enter Party Name..." 
-                                            className="h-12 rounded-2xl border-gray-100 bg-white font-bold text-sm shadow-sm focus:ring-orange-200 transition-all" 
-                                        />
+                                <div className="flex flex-col sm:flex-row gap-4 items-end w-full sm:w-[48rem]">
+                                    <div className="flex-1 flex gap-2 items-end w-full">
+                                        <div className="flex-1 min-w-0">
+                                            <label className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2 block ml-1">Select Vendor</label>
+                                            <Select 
+                                                value={vendorsList.find(v => v.name === vendorName)?._id || ""}
+                                                onValueChange={(val) => {
+                                                    const selected = vendorsList.find(v => v._id === val);
+                                                    if (selected) {
+                                                        setVendorName(selected.name);
+                                                        setVendorGSTIN(selected.gstin || "");
+                                                    }
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-12 rounded-2xl border-gray-100 bg-white font-bold text-sm shadow-sm focus:ring-orange-200 transition-all w-full">
+                                                    <SelectValue placeholder="Select Vendor..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {vendorsList.map(v => (
+                                                        <SelectItem key={v._id} value={v._id || ""} className="text-xs font-bold">
+                                                            {v.name} {v.gstin ? `(${v.gstin})` : ''}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <Button 
+                                            type="button"
+                                            onClick={() => {
+                                                setEditingVendor(null);
+                                                setNewVendorName("");
+                                                setNewVendorGSTIN("");
+                                                setNewVendorAddress("");
+                                                setNewVendorPhone("");
+                                                setShowVendorModal(true);
+                                            }}
+                                            className="h-12 w-12 rounded-2xl bg-orange-50 text-orange-600 border border-orange-100 hover:bg-orange-100 flex items-center justify-center p-0 shrink-0"
+                                            title="Add New Vendor"
+                                        >
+                                            <Plus className="w-5 h-5" />
+                                        </Button>
                                     </div>
-                                    <div className="w-full sm:w-48">
+                                    <div className="w-full sm:w-48 shrink-0">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1">GSTIN</label>
                                         <Input 
                                             value={vendorGSTIN} 
                                             onChange={(e) => setVendorGSTIN(e.target.value)} 
                                             placeholder="Optional" 
                                             className="h-12 rounded-2xl border-gray-100 bg-white font-mono text-sm shadow-sm focus:ring-orange-200 transition-all" 
+                                            disabled
                                         />
                                     </div>
                                 </div>
@@ -819,6 +980,98 @@ const Purchases = () => {
                             className="flex-1 h-12 rounded-xl font-bold uppercase tracking-wider bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20"
                         >
                             Yes, Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Add/Edit Vendor Dialog */}
+            <Dialog open={showVendorModal} onOpenChange={setShowVendorModal}>
+                <DialogContent className="max-w-md rounded-[32px] p-8 border-none shadow-3xl bg-white">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-black text-gray-900">
+                            {editingVendor ? "Edit Vendor Details" : "Register New Vendor"}
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-gray-500 font-normal">
+                            Fill in the vendor credentials. These details will be saved for future purchases.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 my-6">
+                        <div>
+                            <label className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2 block">Vendor Name *</label>
+                            <Input 
+                                value={newVendorName} 
+                                onChange={(e) => setNewVendorName(e.target.value)} 
+                                placeholder="e.g. Acme Pharma" 
+                                className="h-12 rounded-xl border-gray-100 bg-white font-bold text-sm" 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">GSTIN</label>
+                            <Input 
+                                value={newVendorGSTIN} 
+                                onChange={(e) => setNewVendorGSTIN(e.target.value)} 
+                                placeholder="e.g. 07AAAAA1111A1Z1" 
+                                className="h-12 rounded-xl border-gray-100 bg-white font-mono text-sm uppercase" 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Phone Number</label>
+                            <Input 
+                                value={newVendorPhone} 
+                                onChange={(e) => setNewVendorPhone(e.target.value)} 
+                                placeholder="e.g. 9876543210" 
+                                className="h-12 rounded-xl border-gray-100 bg-white text-sm" 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Address</label>
+                            <Input 
+                                value={newVendorAddress} 
+                                onChange={(e) => setNewVendorAddress(e.target.value)} 
+                                placeholder="Vendor full business address" 
+                                className="h-12 rounded-xl border-gray-100 bg-white text-sm" 
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-3 sm:gap-0">
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => setShowVendorModal(false)}
+                            className="rounded-xl font-bold h-12"
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleSaveVendor}
+                            className="rounded-xl font-bold h-12 bg-orange-600 hover:bg-orange-700 text-white"
+                        >
+                            {editingVendor ? "Update Vendor" : "Save Vendor"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Vendor Confirmation Dialog */}
+            <Dialog open={deleteVendorId !== null} onOpenChange={(open) => !open && setDeleteVendorId(null)}>
+                <DialogContent className="max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl bg-white">
+                    <div className="p-8 pb-6 flex flex-col items-center text-center">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">
+                            <AlertTriangle className="w-8 h-8 text-red-600" />
+                        </div>
+                        <DialogTitle className="text-xl font-black text-gray-900 mb-2">Delete Vendor</DialogTitle>
+                        <DialogDescription className="text-gray-500 font-medium mb-6 leading-relaxed">
+                            Are you sure you want to delete this vendor? This action cannot be undone.
+                        </DialogDescription>
+                    </div>
+                    <DialogFooter className="p-6 bg-gray-50 flex gap-3 sm:justify-center border-t border-gray-100">
+                        <Button variant="ghost" onClick={() => setDeleteVendorId(null)} className="flex-1 h-12 rounded-xl font-bold uppercase tracking-wider text-gray-500 hover:text-gray-900 hover:bg-gray-200">
+                            Cancel
+                        </Button>
+                        <Button onClick={confirmDeleteVendor} className="flex-1 h-12 rounded-xl font-bold uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white animate-pulse">
+                            Delete
                         </Button>
                     </DialogFooter>
                 </DialogContent>
