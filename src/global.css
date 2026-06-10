@@ -170,7 +170,8 @@
   /* Scrollable table wrapper – use this on the div wrapping .rtable */
   /* Custom scrollbar for sidebar nav */
   .custom-scrollbar::-webkit-scrollbar {
-    width: 4px;
+    width: 15px;
+    height: 15px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
@@ -178,12 +179,14 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #e5e7eb;
+    background: #cbd5e1;
     border-radius: 99px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #d1d5db;
+    background: #94a3b8;
   }
 
   /* Premium Slidable Table Utilities */
@@ -198,7 +201,7 @@
   }
 
   .rtable-wrap::-webkit-scrollbar {
-    height: 6px;
+    height: 12px;
   }
 
   .rtable-wrap::-webkit-scrollbar-track {
@@ -207,13 +210,13 @@
   }
 
   .rtable-wrap::-webkit-scrollbar-thumb {
-    background: #e5e7eb;
+    background: #cbd5e1;
     border-radius: 10px;
-    border: 1px solid #f9fafb;
+    border: 3px solid #f9fafb;
   }
 
   .rtable-wrap::-webkit-scrollbar-thumb:hover {
-    background: #d1d5db;
+    background: #94a3b8;
   }
 
   .sticky-left {
@@ -234,5 +237,25 @@
     pointer-events: none;
     background: linear-gradient(to right, rgba(0,0,0,0.05), transparent);
     z-index: 21;
+  }
+
+  /* Global Website Scrollbars */
+  ::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #f9fafb;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1; /* slate-300 */
+    border-radius: 99px;
+    border: 3px solid #f9fafb;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; /* slate-400 */
   }
 }
