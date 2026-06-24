@@ -16,6 +16,7 @@ const Settings = () => {
     minOrderValue: 1000.00,
     freeDeliveryThreshold: 1500.00,
     maxOrdersPerDay: 50,
+    maxOrdersPerSlot: 20,
     paymentQrUrl: null as string | null,
   });
   
@@ -38,6 +39,7 @@ const Settings = () => {
           minOrderValue: res.data.minOrderValue || 1000.00,
           freeDeliveryThreshold: res.data.freeDeliveryThreshold || 1500.00,
           maxOrdersPerDay: res.data.maxOrdersPerDay || 50,
+          maxOrdersPerSlot: res.data.maxOrdersPerSlot || 20,
           paymentQrUrl: res.data.paymentQrUrl || null,
         });
       }
@@ -100,6 +102,7 @@ const Settings = () => {
         minOrderValue: settings.minOrderValue,
         freeDeliveryThreshold: settings.freeDeliveryThreshold,
         maxOrdersPerDay: settings.maxOrdersPerDay,
+        maxOrdersPerSlot: settings.maxOrdersPerSlot,
       });
       if (res.success) {
         toast.success('Settings updated successfully!');
@@ -109,6 +112,7 @@ const Settings = () => {
           minOrderValue: res.data.minOrderValue,
           freeDeliveryThreshold: res.data.freeDeliveryThreshold,
           maxOrdersPerDay: res.data.maxOrdersPerDay,
+          maxOrdersPerSlot: res.data.maxOrdersPerSlot,
         }));
       }
     } catch (e) {
@@ -271,7 +275,7 @@ const Settings = () => {
                 <h3 className="text-lg font-black text-gray-900 tracking-tight uppercase tracking-widest text-xs">Delivery Rules</h3>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                 <div className="space-y-2">
                   <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">Minimum Order (₹)</Label>
                   <div className="relative">
@@ -319,6 +323,18 @@ const Settings = () => {
                       min="1"
                       value={settings.maxOrdersPerDay}
                       onChange={(e) => handleSettingChange("maxOrdersPerDay", Math.max(1, parseInt(e.target.value) || 1))}
+                      className="h-12 px-4 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white transition-all font-normal"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">Max Orders / Slot</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={settings.maxOrdersPerSlot}
+                      onChange={(e) => handleSettingChange("maxOrdersPerSlot", Math.max(1, parseInt(e.target.value) || 1))}
                       className="h-12 px-4 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white transition-all font-normal"
                     />
                   </div>

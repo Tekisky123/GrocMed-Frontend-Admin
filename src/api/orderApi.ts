@@ -77,6 +77,8 @@ export interface Order {
         method: string;
         collectedAt?: string;
         paymentScreenshot?: string;
+        cashAmount?: number;
+        onlineAmount?: number;
     };
     createdAt: string;
     updatedAt: string;

@@ -596,6 +596,19 @@ const Orders = () => {
                           {selectedOrder.codCollectionDetails.method} Received
                         </Badge>
                       </div>
+
+                      {selectedOrder.codCollectionDetails.method === 'Split' && (
+                        <div className="grid grid-cols-2 gap-4 bg-white/60 p-3 rounded-xl border border-gray-100">
+                          <div>
+                            <p className="text-[10px] font-normal text-gray-400 uppercase tracking-wider">Cash Portion</p>
+                            <p className="text-sm font-black text-gray-800">₹{selectedOrder.codCollectionDetails.cashAmount || 0}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-normal text-gray-400 uppercase tracking-wider">Online Portion</p>
+                            <p className="text-sm font-black text-gray-800">₹{selectedOrder.codCollectionDetails.onlineAmount || 0}</p>
+                          </div>
+                        </div>
+                      )}
                       
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
