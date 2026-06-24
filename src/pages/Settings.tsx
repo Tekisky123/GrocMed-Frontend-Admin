@@ -539,6 +539,9 @@ const Settings = () => {
                 <p className="text-[11px] font-normal text-blue-600 uppercase tracking-widest opacity-70">
                   Export the complete database to JSON for safe-keeping, or restore from a modified JSON file.
                 </p>
+                <p className="text-[10px] font-semibold text-red-500 uppercase tracking-widest mt-1">
+                  ★ Recommended: Backup your database at least once every month.
+                </p>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 mt-4 lg:mt-0 sm:items-center">
