@@ -72,6 +72,14 @@ export const adminApi = {
         const response = await axiosInstance.get("/api/admin/exportCustomers", { responseType: 'blob' });
         return response.data;
     },
+    exportDatabaseBackup: async () => {
+        const response = await axiosInstance.get("/api/admin/backup/export", { responseType: 'blob' });
+        return response.data;
+    },
+    restoreDatabaseBackup: async (backupData: any) => {
+        const response = await axiosInstance.post("/api/admin/backup/restore", backupData);
+        return response.data;
+    },
     // Pincode Management
     getAllPincodes: async (params?: { limit?: number; search?: string }) => {
         const response = await axiosInstance.get("/api/admin/pincodes", { params });

@@ -25,6 +25,9 @@ const Settings = () => {
   const [qrUploading, setQrUploading] = useState(false);
   const [qrRemoving, setQrRemoving] = useState(false);
   const qrFileRef = useRef<HTMLInputElement>(null);
+  
+  const [restoring, setRestoring] = useState(false);
+  const restoreFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -247,6 +250,75 @@ const Settings = () => {
     }
   };
 
+  const handleDatabaseExport = async () => {
+    try {
+      setDownloading("grocmed_db_backup.json");
+      const blob = await adminApi.exportDatabaseBackup();
+      
+      const timestamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+      const filename = `grocmed_db_backup_${timestamp}.json`;
+      
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success("Database exported successfully!");
+    } catch (err) {
+      toast.error("Failed to export database");
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const handleDatabaseRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const text = event.target?.result as string;
+        const backupData = JSON.parse(text);
+
+        if (!backupData.version || !backupData.data) {
+          toast.error("Invalid database backup file format");
+          return;
+        }
+
+        const confirmRestore = window.confirm(
+          "WARNING: Restoring the database will overwrite all current tables and data! " +
+          "Any modifications in the JSON will be applied. " +
+          "Are you sure you want to proceed?"
+        );
+
+        if (!confirmRestore) {
+          if (restoreFileRef.current) restoreFileRef.current.value = "";
+          return;
+        }
+
+        setRestoring(true);
+        const res = await adminApi.restoreDatabaseBackup(backupData);
+        if (res.success) {
+          toast.success("Database restored successfully!");
+          await fetchSettings();
+          await fetchSlots();
+        } else {
+          toast.error(res.message || "Failed to restore database");
+        }
+      } catch (err) {
+        toast.error("Error reading or parsing backup file");
+      } finally {
+        setRestoring(false);
+        if (restoreFileRef.current) restoreFileRef.current.value = "";
+      }
+    };
+    reader.readAsText(file);
+  };
+
   if (loading) {
      return <div className="p-8"><Loader2 className="animate-spin w-8 h-8 text-primary" /></div>;
   }
@@ -361,20 +433,22 @@ const Settings = () => {
           </Card>
 
           {/* Global Data Export */}
-          <Card className="p-6 sm:p-8 border-none shadow-sm rounded-3xl bg-blue-50/30 ring-1 ring-blue-100/50 overflow-hidden relative mt-8">
+          <Card className="p-6 sm:p-8 border-none shadow-sm rounded-3xl bg-blue-50/30 ring-1 ring-blue-100/50 overflow-hidden relative mt-8 space-y-8">
             <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
               <Globe className="w-32 h-32 text-blue-600" />
             </div>
-            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            
+            {/* CSV Backup */}
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-blue-100/60">
               <div className="space-y-1">
                 <h3 className="text-lg font-black text-blue-900 tracking-tight flex items-center gap-2">
                   <Globe className="w-5 h-5" />
-                  System Backup Area
+                  System Backup Area (CSV)
                 </h3>
                 <p className="text-[11px] font-normal text-blue-600 uppercase tracking-widest opacity-70">Download raw application configurations in .csv flat structure</p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-0">
+              <div className="flex flex-wrap gap-3 mt-2 lg:mt-0">
                 <Button
                   className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 shadow-sm disabled:opacity-50"
                   onClick={() => handleSecureDownload('products', 'products_backup.csv')}
@@ -398,6 +472,47 @@ const Settings = () => {
                 >
                   {downloading === 'customers_backup.csv' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
                   Export Customers
+                </Button>
+              </div>
+            </div>
+
+            {/* JSON DB Backup & Restore */}
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-blue-900 tracking-tight flex items-center gap-2">
+                  <ShieldAlert className="w-5 h-5 text-red-500" />
+                  Database Backup & Recovery (JSON)
+                </h3>
+                <p className="text-[11px] font-normal text-blue-600 uppercase tracking-widest opacity-70">
+                  Export the complete database to JSON for safe-keeping, or restore from a modified JSON file.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3 mt-2 lg:mt-0">
+                <Button
+                  className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 shadow-sm disabled:opacity-50"
+                  onClick={handleDatabaseExport}
+                  disabled={downloading !== null || restoring}
+                >
+                  {downloading === 'grocmed_db_backup.json' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                  Export Database (JSON)
+                </Button>
+                
+                <input
+                  type="file"
+                  ref={restoreFileRef}
+                  onChange={handleDatabaseRestore}
+                  accept=".json"
+                  className="hidden"
+                />
+                
+                <Button
+                  className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-700 shadow-md disabled:opacity-50"
+                  onClick={() => restoreFileRef.current?.click()}
+                  disabled={downloading !== null || restoring}
+                >
+                  {restoring ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                  Restore Database (JSON)
                 </Button>
               </div>
             </div>
