@@ -72,8 +72,8 @@ export const adminApi = {
         const response = await axiosInstance.get("/api/admin/exportCustomers", { responseType: 'blob' });
         return response.data;
     },
-    exportDatabaseBackup: async () => {
-        const response = await axiosInstance.get("/api/admin/backup/export", { responseType: 'blob' });
+    exportDatabaseBackup: async (password: string) => {
+        const response = await axiosInstance.post("/api/admin/backup/export", { password });
         return response.data;
     },
     restoreDatabaseBackup: async (backupData: any) => {

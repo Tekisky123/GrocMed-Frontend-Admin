@@ -9,6 +9,14 @@ import { adminApi } from "@/api/adminApi";
 import { deliverySlotApi, DeliverySlot } from "@/api/deliverySlotApi";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const Settings = () => {
   const [settings, setSettings] = useState({
@@ -28,6 +36,15 @@ const Settings = () => {
   
   const [restoring, setRestoring] = useState(false);
   const restoreFileRef = useRef<HTMLInputElement>(null);
+  
+  const [securityModal, setSecurityModal] = useState({
+    isOpen: false,
+    action: null as 'export' | 'restore' | null,
+    title: "",
+    description: "",
+    password: "",
+    pendingFile: null as File | null,
+  });
 
   useEffect(() => {
     fetchSettings();
@@ -250,31 +267,18 @@ const Settings = () => {
     }
   };
 
-  const handleDatabaseExport = async () => {
-    try {
-      setDownloading("grocmed_db_backup.json");
-      const blob = await adminApi.exportDatabaseBackup();
-      
-      const timestamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
-      const filename = `grocmed_db_backup_${timestamp}.json`;
-      
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-      toast.success("Database exported successfully!");
-    } catch (err) {
-      toast.error("Failed to export database");
-    } finally {
-      setDownloading(null);
-    }
+  const triggerExport = () => {
+    setSecurityModal({
+      isOpen: true,
+      action: "export",
+      title: "Confirm Database Export",
+      description: "You are about to export a complete copy of the database. For security, please enter your current administrator password to authorize the download.",
+      password: "",
+      pendingFile: null,
+    });
   };
 
-  const handleDatabaseRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDatabaseRestoreFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -289,34 +293,83 @@ const Settings = () => {
           return;
         }
 
-        const confirmRestore = window.confirm(
-          "WARNING: Restoring the database will overwrite all current tables and data! " +
-          "Any modifications in the JSON will be applied. " +
-          "Are you sure you want to proceed?"
-        );
-
-        if (!confirmRestore) {
-          if (restoreFileRef.current) restoreFileRef.current.value = "";
-          return;
-        }
-
-        setRestoring(true);
-        const res = await adminApi.restoreDatabaseBackup(backupData);
-        if (res.success) {
-          toast.success("Database restored successfully!");
-          await fetchSettings();
-          await fetchSlots();
-        } else {
-          toast.error(res.message || "Failed to restore database");
-        }
+        setSecurityModal({
+          isOpen: true,
+          action: "restore",
+          title: "Confirm Database Restore",
+          description: "WARNING: Restoring the database will overwrite ALL existing collections and data. This action is permanent and cannot be undone. Please enter your administrator password to authorize.",
+          password: "",
+          pendingFile: file,
+        });
       } catch (err) {
         toast.error("Error reading or parsing backup file");
-      } finally {
-        setRestoring(false);
-        if (restoreFileRef.current) restoreFileRef.current.value = "";
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleSecurityConfirm = async () => {
+    if (!securityModal.password) {
+      toast.error("Password is required");
+      return;
+    }
+
+    const { action, password, pendingFile } = securityModal;
+    setSecurityModal((prev) => ({ ...prev, isOpen: false }));
+
+    if (action === "export") {
+      try {
+        setDownloading("grocmed_db_backup.json");
+        const res = await adminApi.exportDatabaseBackup(password);
+        
+        const timestamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+        const filename = `grocmed_db_backup_${timestamp}.json`;
+        
+        const jsonStr = JSON.stringify(res, null, 2);
+        const blob = new Blob([jsonStr], { type: "application/json" });
+        
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+        toast.success("Database exported successfully!");
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || "Failed to export database (Incorrect password)");
+      } finally {
+        setDownloading(null);
+      }
+    } else if (action === "restore" && pendingFile) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const text = event.target?.result as string;
+          const backupData = JSON.parse(text);
+
+          setRestoring(true);
+          const res = await adminApi.restoreDatabaseBackup({
+            ...backupData,
+            password,
+          });
+          if (res.success) {
+            toast.success("Database restored successfully!");
+            await fetchSettings();
+            await fetchSlots();
+          } else {
+            toast.error(res.message || "Failed to restore database");
+          }
+        } catch (err: any) {
+          toast.error(err?.response?.data?.message || "Error restoring database");
+        } finally {
+          setRestoring(false);
+          if (restoreFileRef.current) restoreFileRef.current.value = "";
+        }
+      };
+      reader.readAsText(pendingFile);
+    }
   };
 
   if (loading) {
@@ -488,10 +541,10 @@ const Settings = () => {
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-3 mt-2 lg:mt-0">
+              <div className="flex flex-col sm:flex-row gap-3 mt-4 lg:mt-0 sm:items-center">
                 <Button
-                  className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 shadow-sm disabled:opacity-50"
-                  onClick={handleDatabaseExport}
+                  className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 shadow-sm disabled:opacity-50 w-full sm:w-auto"
+                  onClick={triggerExport}
                   disabled={downloading !== null || restoring}
                 >
                   {downloading === 'grocmed_db_backup.json' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
@@ -501,13 +554,13 @@ const Settings = () => {
                 <input
                   type="file"
                   ref={restoreFileRef}
-                  onChange={handleDatabaseRestore}
+                  onChange={handleDatabaseRestoreFileSelected}
                   accept=".json"
                   className="hidden"
                 />
                 
                 <Button
-                  className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-700 shadow-md disabled:opacity-50"
+                  className="h-12 px-6 rounded-2xl font-normal text-[10px] uppercase tracking-widest bg-blue-600 text-white hover:bg-blue-700 shadow-md disabled:opacity-50 w-full sm:w-auto"
                   onClick={() => restoreFileRef.current?.click()}
                   disabled={downloading !== null || restoring}
                 >
@@ -784,6 +837,63 @@ const Settings = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Security Verification Modal */}
+      <Dialog open={securityModal.isOpen} onOpenChange={(val) => !val && setSecurityModal(prev => ({ ...prev, isOpen: false }))}>
+        <DialogContent className="max-w-[400px] rounded-[32px] p-8 border-none shadow-2xl bg-white">
+          <div className="flex flex-col items-center text-center space-y-4">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-2 ${
+              securityModal.action === "restore" ? "bg-red-50" : "bg-blue-50"
+            }`}>
+              <ShieldAlert className={`w-6 h-6 ${
+                securityModal.action === "restore" ? "text-red-500" : "text-blue-500"
+              }`} />
+            </div>
+
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black text-gray-900 tracking-tight">
+                {securityModal.title}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-400 font-bold pt-2">
+                {securityModal.description}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="w-full text-left space-y-2 pt-2">
+              <Label className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">
+                Admin Password
+              </Label>
+              <Input
+                type="password"
+                placeholder="Enter current password"
+                value={securityModal.password}
+                onChange={(e) => setSecurityModal(prev => ({ ...prev, password: e.target.value }))}
+                className="h-12 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white transition-all font-normal"
+              />
+            </div>
+
+            <DialogFooter className="w-full flex sm:flex-row flex-col gap-3 pt-6">
+              <Button
+                variant="outline"
+                onClick={() => setSecurityModal(prev => ({ ...prev, isOpen: false }))}
+                className="h-12 flex-1 rounded-2xl border-gray-100 font-bold uppercase text-xs tracking-widest text-gray-500 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-200 transition-all w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSecurityConfirm}
+                className={`h-12 flex-1 rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg transition-all active:scale-95 w-full sm:w-auto text-white ${
+                  securityModal.action === "restore" 
+                    ? "bg-red-500 hover:bg-red-600 shadow-red-200" 
+                    : "bg-blue-600 hover:bg-blue-700 shadow-blue-200"
+                }`}
+              >
+                Confirm
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
