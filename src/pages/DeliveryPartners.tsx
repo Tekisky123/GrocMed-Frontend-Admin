@@ -70,9 +70,9 @@ const DeliveryPartners = () => {
   const filteredPartners = useMemo(() => {
     return allPartners.filter((partner) => {
       const q = searchQuery.toLowerCase();
-      const matchesSearch = partner.name.toLowerCase().includes(q) ||
-        partner.email.toLowerCase().includes(q) ||
-        partner.phone.includes(searchQuery);
+      const matchesSearch = (partner.name || '').toLowerCase().includes(q) ||
+        (partner.email || '').toLowerCase().includes(q) ||
+        (partner.phone || '').includes(searchQuery);
       const matchesStatus = !statusFilter || partner.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -278,10 +278,10 @@ const DeliveryPartners = () => {
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
                         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center font-bold text-primary text-sm border border-primary/10">
-                          {partner.name.charAt(0).toUpperCase()}
+                          {partner.name ? partner.name.charAt(0).toUpperCase() : '?'}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">{partner.name}</p>
+                          <p className="text-sm font-semibold text-gray-900">{partner.name || "Unknown Partner"}</p>
                           <p className="text-[10px] text-gray-400 font-normal mt-0.5">
                             {partner.isActive ? (
                               <span className="text-green-600">● Active</span>

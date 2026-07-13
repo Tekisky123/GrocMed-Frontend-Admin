@@ -84,8 +84,8 @@ const AdminManagement = () => {
   const filteredUsers = useMemo(() => {
     return admins.filter((user: any) => {
       const q = searchQuery.toLowerCase();
-      return user.name.toLowerCase().includes(q) ||
-        user.email.toLowerCase().includes(q);
+      return (user.name || '').toLowerCase().includes(q) ||
+        (user.email || '').toLowerCase().includes(q);
     });
   }, [searchQuery, admins]);
 
@@ -205,10 +205,10 @@ const AdminManagement = () => {
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-normal text-gray-400 text-xs">
-                          {user.name.charAt(0)}
+                          {user.name ? user.name.charAt(0) : '?'}
                         </div>
                         <div>
-                          <p className="text-sm font-normal text-gray-900">{user.name}</p>
+                          <p className="text-sm font-normal text-gray-900">{user.name || "Unknown Admin"}</p>
                           <p className="text-[11px] text-gray-400 font-normal">{user.email}</p>
                         </div>
                       </div>

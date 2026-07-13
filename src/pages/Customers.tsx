@@ -180,10 +180,10 @@ const Customers = () => {
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
                         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 flex items-center justify-center font-bold text-blue-600 text-sm border border-blue-100">
-                          {customer.name.charAt(0).toUpperCase()}
+                          {customer.name ? customer.name.charAt(0).toUpperCase() : '?'}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">{customer.name}</p>
+                          <p className="text-sm font-semibold text-gray-900">{customer.name || "Unknown Customer"}</p>
                           <p className="text-[10px] text-gray-400 font-normal mt-0.5">
                             ID: {customer._id.slice(-8).toUpperCase()}
                           </p>
@@ -314,9 +314,9 @@ const Customers = () => {
           {customerToDelete && (
             <div className="py-4">
               <div className="p-4 rounded-2xl bg-red-50 border border-red-100">
-                <p className="text-sm font-semibold text-gray-900">{customerToDelete.name}</p>
-                <p className="text-xs text-gray-600 mt-1">{customerToDelete.email}</p>
-                <p className="text-xs text-gray-600">{customerToDelete.phone}</p>
+                <p className="text-sm font-semibold text-gray-900">{customerToDelete?.name || "Unknown Customer"}</p>
+                <p className="text-xs text-gray-600 mt-1">{customerToDelete?.email || "N/A"}</p>
+                <p className="text-xs text-gray-600">{customerToDelete?.phone || "N/A"}</p>
               </div>
             </div>
           )}
@@ -424,7 +424,7 @@ const CustomerDetailsModal = ({ customerId, onClose }: { customerId: string; onC
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <User className="w-4 h-4 text-gray-400" />
-              <span className="text-sm font-semibold text-gray-900">{customer.name}</span>
+              <span className="text-sm font-semibold text-gray-900">{customer?.name || "Unknown Customer"}</span>
             </div>
             <div className="flex items-center gap-3">
               <Mail className="w-4 h-4 text-gray-400" />

@@ -629,10 +629,10 @@ const Purchases = () => {
                                     <tr><td colSpan={8} className="text-center py-20 text-gray-400 italic">No vendors found. Add your first vendor above.</td></tr>
                                 ) : vendors
                                     .filter(v => !search || 
-                                        v.name.toLowerCase().includes(search.toLowerCase()) || 
-                                        v.gstin?.toLowerCase().includes(search.toLowerCase()) || 
-                                        v.phone?.toLowerCase().includes(search.toLowerCase()) || 
-                                        v.address?.toLowerCase().includes(search.toLowerCase())
+                                        (v.name || '').toLowerCase().includes(search.toLowerCase()) || 
+                                        (v.gstin || '').toLowerCase().includes(search.toLowerCase()) || 
+                                        (v.phone || '').toLowerCase().includes(search.toLowerCase()) || 
+                                        (v.address || '').toLowerCase().includes(search.toLowerCase())
                                     )
                                     .map((v, idx) => (
                                         <tr key={v._id || idx} className="hover:bg-orange-50/20 transition-all duration-200 group">
@@ -640,9 +640,9 @@ const Purchases = () => {
                                             <td className="px-6 py-5">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 font-black text-xs uppercase">
-                                                        {v.name.charAt(0)}
+                                                        {v.name ? v.name.charAt(0) : '?'}
                                                     </div>
-                                                    <span className="text-sm font-black text-gray-900">{v.name}</span>
+                                                    <span className="text-sm font-black text-gray-900">{v.name || "Unknown Vendor"}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-5 text-sm font-mono font-bold text-gray-500">{v.gstin || "URD"}</td>

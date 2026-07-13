@@ -9,6 +9,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
+
 
 // Core Pages
 import Login from "./pages/Login";
@@ -40,7 +42,9 @@ const queryClient = new QueryClient();
 const makeProtected = (Component: React.ComponentType, requiredRole?: string) => (
   <ProtectedRoute requiredRole={requiredRole}>
     <MainLayout>
-      <Component />
+      <ErrorBoundary>
+        <Component />
+      </ErrorBoundary>
     </MainLayout>
   </ProtectedRoute>
 );

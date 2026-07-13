@@ -42,6 +42,17 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { downloadOrderInvoicePDF } from "@/utils/exportOrderPdfUtils";
 
+const safeFormatDate = (dateVal: any, formatStr: string) => {
+  if (!dateVal) return "N/A";
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "N/A";
+    return format(d, formatStr);
+  } catch (e) {
+    return "N/A";
+  }
+};
+
 const Orders = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -254,20 +265,20 @@ const Orders = () => {
                   <tr key={order._id} className="group hover:bg-gray-50/30 transition-colors">
                     <td className="px-6 py-5">
                       <p className="text-sm font-mono font-semibold text-gray-900">#{order._id.slice(-8).toUpperCase()}</p>
-                      <p className="text-[10px] text-gray-400 font-normal mt-0.5">{format(new Date(order.createdAt), 'HH:mm')}</p>
+                      <p className="text-[10px] text-gray-400 font-normal mt-0.5">{safeFormatDate(order.createdAt, 'HH:mm')}</p>
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 flex items-center justify-center font-bold text-blue-600 text-sm border border-blue-100">
-                          {order.customer.name.charAt(0).toUpperCase()}
+                          {order.customer?.name ? order.customer.name.charAt(0).toUpperCase() : '?'}
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">{order.customer.name}</p>
-                          <p className="text-[10px] text-gray-400 font-normal">{order.customer.phone}</p>
+                          <p className="text-sm font-semibold text-gray-900">{order.customer?.name || "Unknown Customer"}</p>
+                          <p className="text-[10px] text-gray-400 font-normal">{order.customer?.phone || "N/A"}</p>
                           {order.deliveryPartner && (
                             <p className="text-[10px] text-primary font-bold mt-1 inline-flex items-center gap-1">
                               <Truck className="w-2.5 h-2.5" />
-                              {order.deliveryPartner.name}
+                              {order.deliveryPartner.name || "N/A"}
                             </p>
                           )}
                         </div>
@@ -277,7 +288,7 @@ const Orders = () => {
                       <p className="text-sm font-bold text-gray-900">₹{order.totalAmount.toLocaleString()}</p>
                     </td>
                     <td className="px-6 py-5">
-                      <p className="text-xs font-normal text-gray-700">{format(new Date(order.createdAt), 'MMM dd, yyyy')}</p>
+                      <p className="text-xs font-normal text-gray-700">{safeFormatDate(order.createdAt, 'MMM dd, yyyy')}</p>
                     </td>
                     <td className="px-6 py-5">
                       <Badge className={`px-3 py-1.5 rounded-lg font-semibold text-[10px] uppercase tracking-wider border inline-flex items-center gap-1.5 ${getStatusColor(order.orderStatus)}`}>
@@ -436,7 +447,7 @@ const Orders = () => {
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-primary text-xs border border-primary/5">
-                        {partner.name.charAt(0).toUpperCase()}
+                        {partner.name ? partner.name.charAt(0).toUpperCase() : '?'}
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{partner.name}</p>
@@ -524,13 +535,13 @@ const Orders = () => {
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
                     <User className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm font-semibold text-gray-900">{selectedOrder.customer.name}</span>
+                    <span className="text-sm font-semibold text-gray-900">{selectedOrder.customer?.name || "Unknown Customer"}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <Phone className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm font-normal text-gray-700">{selectedOrder.customer.phone}</span>
+                    <span className="text-sm font-normal text-gray-700">{selectedOrder.customer?.phone || "N/A"}</span>
                   </div>
-                  {selectedOrder.customer.email && (
+                  {selectedOrder.customer?.email && (
                     <div className="flex items-center gap-3">
                       <Mail className="w-4 h-4 text-gray-400" />
                       <span className="text-sm font-normal text-gray-700">{selectedOrder.customer.email}</span>
@@ -576,15 +587,15 @@ const Orders = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-normal text-gray-600">Order Date</span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {format(new Date(selectedOrder.createdAt), 'MMM dd, yyyy HH:mm')}
+                      {safeFormatDate(selectedOrder.createdAt, 'MMM dd, yyyy HH:mm')}
                     </span>
                   </div>
                   {selectedOrder.deliveryPartner && (
                     <div className="flex items-center justify-between pt-2 mt-2 border-t border-green-100">
                       <span className="text-sm font-normal text-gray-600">Assigned Partner</span>
                       <div className="text-right">
-                        <p className="text-sm font-black text-gray-900">{selectedOrder.deliveryPartner.name}</p>
-                        <p className="text-[10px] text-gray-500">{selectedOrder.deliveryPartner.phone}</p>
+                        <p className="text-sm font-black text-gray-900">{selectedOrder.deliveryPartner.name || "N/A"}</p>
+                        <p className="text-[10px] text-gray-500">{selectedOrder.deliveryPartner.phone || "N/A"}</p>
                       </div>
                     </div>
                   )}
@@ -719,7 +730,7 @@ const Orders = () => {
                             <p className="text-xs font-normal text-gray-600 mt-1">{track.description}</p>
                           )}
                           <p className="text-[10px] text-gray-400 mt-1">
-                            {format(new Date(track.timestamp), 'MMM dd, yyyy HH:mm')}
+                            {safeFormatDate(track.timestamp, 'MMM dd, yyyy HH:mm')}
                           </p>
                         </div>
                       </div>
