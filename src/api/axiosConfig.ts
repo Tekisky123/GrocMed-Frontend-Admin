@@ -2,7 +2,7 @@ import axios from "axios";
 import { toast } from "sonner";
 
 // const API_BASE_URL = "https://groc-med-backend.vercel.app"
-const API_BASE_URL = "https://grocmed-backend-production.up.railway.app"
+const API_BASE_URL = "https://api.grocmed.com"
 // const API_BASE_URL = "http://localhost:3000"
 
 
