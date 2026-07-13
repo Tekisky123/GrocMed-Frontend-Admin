@@ -274,6 +274,9 @@ const Orders = () => {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-gray-900">{order.customer?.name || "Unknown Customer"}</p>
+                          {order.customer?.shopName && (
+                            <p className="text-[11px] font-bold text-indigo-600 mt-0.5">{order.customer.shopName}</p>
+                          )}
                           <p className="text-[10px] text-gray-400 font-normal">{order.customer?.phone || "N/A"}</p>
                           {order.deliveryPartner && (
                             <p className="text-[10px] text-primary font-bold mt-1 inline-flex items-center gap-1">

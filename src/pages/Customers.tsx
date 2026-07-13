@@ -184,6 +184,9 @@ const Customers = () => {
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-gray-900">{customer.name || "Unknown Customer"}</p>
+                          {customer.shopName && (
+                            <p className="text-[11px] font-bold text-indigo-600 mt-0.5">{customer.shopName}</p>
+                          )}
                           <p className="text-[10px] text-gray-400 font-normal mt-0.5">
                             ID: {customer._id.slice(-8).toUpperCase()}
                           </p>
