@@ -17,6 +17,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import Products from "./pages/Products";
+import BrandsCategories from "./pages/BrandsCategories";
 import Customers from "./pages/Customers";
 import DeliveryPartners from "./pages/DeliveryPartners";
 import CustomNotifications from "./pages/CustomNotifications";
@@ -36,6 +37,7 @@ import FixedAssets from "./pages/FixedAssets";
 import StatutoryRegisters from "./pages/StatutoryRegisters";
 import Reports from "./pages/Reports";
 import Pincodes from "./pages/Pincodes";
+import { useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
@@ -63,6 +65,7 @@ const App = () => (
             <Route path="/" element={makeProtected(Dashboard)} />
             <Route path="/orders" element={makeProtected(Orders)} />
             <Route path="/products" element={makeProtected(Products)} />
+            <Route path="/brands-categories" element={makeProtected(BrandsCategories)} />
             <Route path="/customers" element={makeProtected(Customers)} />
             <Route path="/delivery-partners" element={makeProtected(DeliveryPartners)} />
             <Route path="/notifications" element={makeProtected(CustomNotifications)} />

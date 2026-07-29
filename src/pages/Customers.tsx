@@ -178,19 +178,12 @@ const Customers = () => {
                 paginatedCustomers.map((customer: Customer) => (
                   <tr key={customer._id} className="group hover:bg-gray-50/30 transition-colors">
                     <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 flex items-center justify-center font-bold text-blue-600 text-sm border border-blue-100">
-                          {customer.name ? customer.name.charAt(0).toUpperCase() : '?'}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">{customer.name || "Unknown Customer"}</p>
-                          {customer.shopName && (
-                            <p className="text-[11px] font-bold text-indigo-600 mt-0.5">{customer.shopName}</p>
-                          )}
-                          <p className="text-[10px] text-gray-400 font-normal mt-0.5">
-                            ID: {customer._id.slice(-8).toUpperCase()}
-                          </p>
-                        </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{customer.shopName || "No Shop Name"}</p>
+                        <p className="text-[11px] font-bold text-indigo-600 mt-0.5">{customer.name || "Unknown Customer"}</p>
+                        <p className="text-[10px] text-gray-400 font-normal mt-0.5">
+                          ID: {customer._id.slice(-8).toUpperCase()}
+                        </p>
                       </div>
                     </td>
                     <td className="px-6 py-5">

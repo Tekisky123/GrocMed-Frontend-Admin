@@ -35,9 +35,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const checkSession = () => {
       if (loginTime) {
-        const twentyFourHours = 24 * 60 * 60 * 1000;
+        const sixtyDays = 60 * 24 * 60 * 60 * 1000;
         const now = Date.now();
-        const expirationTime = parseInt(loginTime) + twentyFourHours;
+        const expirationTime = parseInt(loginTime) + sixtyDays;
 
         if (now > expirationTime) {
           logout("Session expired. Please login again.");

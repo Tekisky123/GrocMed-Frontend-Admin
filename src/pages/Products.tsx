@@ -26,38 +26,32 @@ import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { ImageCropper } from "@/components/products/ImageCropper";
-
-const CATEGORIES = [
-  "Biscuits & Bakery",
-  "Chips & Snacks",
-  "Namkeen & Sweets",
-  "Chocolates & Candies",
-  "Beverages",
-  "Tea & Coffee",
-  "Personal Care",
-  "Home Care",
-  "Baby Care",
-  "Grocery & Food"
-];
-
-const BRANDS = [
-  "Britannia",
-  "Parle",
-  "ITC",
-  "GOPAL",
-  "HUL",
-  "SHREE",
-  "PERFETTI",
-  "Pepsico",
-  "P&G",
-  "Mamy Poko",
-  "Haldirams"
-];
+import { brandApi } from "@/api/brandApi";
+import { categoryApi } from "@/api/categoryApi";
 
 
 const Products = () => {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch active categories and brands dynamically
+  const { data: categoriesRes } = useQuery({
+    queryKey: ["categories-active"],
+    queryFn: categoryApi.getAllCategories,
+  });
+
+  const { data: brandsRes } = useQuery({
+    queryKey: ["brands-active"],
+    queryFn: brandApi.getAllBrands,
+  });
+
+  const categoriesList = useMemo(() => {
+    return categoriesRes?.data?.map((c: any) => c.name) || [];
+  }, [categoriesRes]);
+
+  const brandsList = useMemo(() => {
+    return brandsRes?.data?.map((b: any) => b.name) || [];
+  }, [brandsRes]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -416,7 +410,7 @@ const Products = () => {
         >
           All Items
         </button>
-        {CATEGORIES.map((cat) => (
+        {categoriesList.map((cat: string) => (
           <button
             key={cat}
             onClick={() => { setCategoryFilter(cat); setCurrentPage(1); }}
@@ -617,14 +611,14 @@ const Products = () => {
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">Brand</Label>
-                      <SearchableSelect options={BRANDS} value={formBrand} onChange={setFormBrand} placeholder="Choose Brand" />
+                      <SearchableSelect options={brandsList} value={formBrand} onChange={setFormBrand} placeholder="Choose Brand" />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-1">
                       <Label className="text-[11px] font-normal text-gray-400 uppercase tracking-widest ml-1">Category <span className="text-red-500 font-black">*</span></Label>
                       <SearchableSelect
-                        options={CATEGORIES}
+                        options={categoriesList}
                         value={formCategory}
                         onChange={(val) => { setFormCategory(val); setFormErrors(prev => ({ ...prev, category: "" })); }}
                         placeholder="Pick Category"
