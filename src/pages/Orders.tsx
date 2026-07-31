@@ -284,7 +284,13 @@ const Orders = () => {
                       <p className="text-sm font-bold text-gray-900">₹{order.totalAmount.toLocaleString()}</p>
                     </td>
                     <td className="px-6 py-5">
-                      <p className="text-xs font-normal text-gray-700">{safeFormatDate(order.createdAt, 'MMM dd, yyyy hh:mm a')}</p>
+                      <p className="text-xs font-semibold text-gray-900">{safeFormatDate(order.createdAt, 'MMM dd, yyyy hh:mm a')}</p>
+                      {order.deliverySlot && (
+                        <div className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-orange-700 bg-orange-50 px-2 py-0.5 rounded-md w-fit border border-orange-200/60 shadow-xs">
+                          <Clock className="w-3 h-3 text-orange-500" />
+                          <span>Slot: {order.deliverySlot} {order.deliveryDate ? `(${safeFormatDate(order.deliveryDate, 'MMM dd')})` : ''}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-5">
                       <Badge className={`px-3 py-1.5 rounded-lg font-semibold text-[10px] uppercase tracking-wider border inline-flex items-center gap-1.5 ${getStatusColor(order.orderStatus)}`}>
@@ -586,6 +592,15 @@ const Orders = () => {
                       {safeFormatDate(selectedOrder.createdAt, 'MMM dd, yyyy hh:mm a')}
                     </span>
                   </div>
+                  {selectedOrder.deliverySlot && (
+                    <div className="flex items-center justify-between pt-2 mt-2 border-t border-green-100">
+                      <span className="text-sm font-normal text-gray-600">Selected Delivery Slot</span>
+                      <Badge className="px-3 py-1.5 rounded-lg font-bold text-xs bg-orange-50 text-orange-700 border-orange-200 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-orange-500" />
+                        {selectedOrder.deliverySlot} {selectedOrder.deliveryDate ? `(${safeFormatDate(selectedOrder.deliveryDate, 'MMM dd, yyyy')})` : ''}
+                      </Badge>
+                    </div>
+                  )}
                   {selectedOrder.deliveryPartner && (
                     <div className="flex items-center justify-between pt-2 mt-2 border-t border-green-100">
                       <span className="text-sm font-normal text-gray-600">Assigned Partner</span>

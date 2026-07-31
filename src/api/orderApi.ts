@@ -83,5 +83,7 @@ export interface Order {
     };
     createdAt: string;
     updatedAt: string;
+    deliverySlot?: string;
+    deliveryDate?: string;
     __v: number;
 }

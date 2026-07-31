@@ -63,14 +63,6 @@ const CustomNotifications = () => {
     const [message, setMessage] = useState("");
     const [target, setTarget] = useState("customers");
 
-    // WhatsApp State
-    const [whatsappModalOpen, setWhatsappModalOpen] = useState(false);
-    const [whatsappCampaignName, setWhatsappCampaignName] = useState("");
-    const [whatsappTemplateParams, setWhatsappTemplateParams] = useState("");
-    const [whatsappTarget, setWhatsappTarget] = useState("customers");
-    const [whatsappSpecificNumbers, setWhatsappSpecificNumbers] = useState("");
-    const [whatsappSending, setWhatsappSending] = useState(false);
-
     const fetchNotifications = async () => {
         try {
             setLoading(true);
@@ -118,48 +110,6 @@ const CustomNotifications = () => {
         }
     };
 
-    const handleSendWhatsApp = async () => {
-        if (!whatsappCampaignName.trim()) {
-            toast.error("Please provide a campaign name");
-            return;
-        }
-
-        if (whatsappTarget === "specific" && !whatsappSpecificNumbers.trim()) {
-            toast.error("Please specify at least one recipient phone number");
-            return;
-        }
-
-        try {
-            setWhatsappSending(true);
-            const paramsArray = whatsappTemplateParams
-                .split(",")
-                .map(p => p.trim())
-                .filter(p => p.length > 0);
-
-            const res = await adminApi.sendWhatsAppCampaign({
-                campaignName: whatsappCampaignName.trim(),
-                templateParams: paramsArray,
-                targetAudience: whatsappTarget,
-                specificNumbers: whatsappTarget === "specific" ? whatsappSpecificNumbers.trim() : undefined
-            });
-
-            if (res.success) {
-                toast.success(res.message || "WhatsApp campaign initiated!");
-                setWhatsappModalOpen(false);
-                setWhatsappCampaignName("");
-                setWhatsappTemplateParams("");
-                setWhatsappSpecificNumbers("");
-            } else {
-                toast.error(res.message || "Failed to send campaign");
-            }
-        } catch (error: any) {
-            console.error(error);
-            toast.error(error.response?.data?.message || "Failed to trigger campaign");
-        } finally {
-            setWhatsappSending(false);
-        }
-    };
-
     const openDetail = (notification: Notification) => {
         setSelectedNotification(notification);
         setDetailModalOpen(true);
@@ -183,9 +133,6 @@ const CustomNotifications = () => {
                 <div className="flex flex-wrap gap-3">
                     <Button onClick={() => setModalOpen(true)} className="bg-primary hover:bg-primary/90 gap-2">
                         <Send className="h-4 w-4" /> Send New Notification
-                    </Button>
-                    <Button onClick={() => setWhatsappModalOpen(true)} className="bg-green-600 hover:bg-green-700 gap-2 text-white shadow-lg shadow-green-600/20">
-                        <Send className="h-4 w-4" /> WhatsApp Broadcast
                     </Button>
                 </div>
             </div>
@@ -392,89 +339,6 @@ const CustomNotifications = () => {
 
                     <DialogFooter>
                         <Button onClick={() => setDetailModalOpen(false)}>Close</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* WhatsApp Campaign Modal */}
-            <Dialog open={whatsappModalOpen} onOpenChange={setWhatsappModalOpen}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Send WhatsApp API Campaign</DialogTitle>
-                        <DialogDescription>
-                            Trigger a templated WhatsApp message using your live campaign in AiSensy.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="campaign-name">Campaign Name</Label>
-                            <Input
-                                id="campaign-name"
-                                placeholder="e.g. order_confirmed, promotion_may"
-                                value={whatsappCampaignName}
-                                onChange={(e) => setWhatsappCampaignName(e.target.value)}
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="whatsapp-target">Target Audience</Label>
-                            <Select value={whatsappTarget} onValueChange={setWhatsappTarget}>
-                                <SelectTrigger id="whatsapp-target">
-                                    <SelectValue placeholder="Select target" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="customers">All Active Customers</SelectItem>
-                                    <SelectItem value="specific">Specific Phone Numbers</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {whatsappTarget === "specific" && (
-                            <div className="space-y-2">
-                                <Label htmlFor="specific-numbers">Recipient Phone Numbers</Label>
-                                <Textarea
-                                    id="specific-numbers"
-                                    placeholder="Comma-separated (e.g. 919876543210, 919988776655)"
-                                    value={whatsappSpecificNumbers}
-                                    onChange={(e) => setWhatsappSpecificNumbers(e.target.value)}
-                                    rows={3}
-                                />
-                                <p className="text-xs text-muted-foreground">Ensure numbers include the country code prefix (e.g. 91 for India).</p>
-                            </div>
-                        )}
-
-                        <div className="space-y-2">
-                            <Label htmlFor="template-params">Template Parameters</Label>
-                            <Input
-                                id="template-params"
-                                placeholder="Comma-separated (e.g. John, order123, ₹500)"
-                                value={whatsappTemplateParams}
-                                onChange={(e) => setWhatsappTemplateParams(e.target.value)}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Order must match placeholders in your WhatsApp template. Use <strong className="text-primary">{`{name}`}</strong> to inject the customer's database name dynamically!
-                            </p>
-                        </div>
-                    </div>
-
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setWhatsappModalOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={handleSendWhatsApp} disabled={whatsappSending} className="bg-green-600 hover:bg-green-700 text-white gap-2">
-                            {whatsappSending ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Sending...
-                                </>
-                            ) : (
-                                <>
-                                    <Send className="h-4 w-4" />
-                                    Launch Broadcast
-                                </>
-                            )}
-                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
