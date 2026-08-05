@@ -410,7 +410,7 @@ const Payroll = () => {
 
             {/* Run Payroll Confirmation Modal */}
             <Dialog open={showProcessConfirm} onOpenChange={setShowProcessConfirm}>
-                <DialogContent className="max-w-md rounded-[32px] p-8 border-none shadow-2xl">
+                <DialogContent className="max-w-md rounded-[32px] p-0 max-h-[90vh] overflow-y-auto custom-scrollbar border-none shadow-2xl">
                     <DialogHeader>
                         <div className="w-16 h-16 rounded-3xl bg-violet-50 flex items-center justify-center mb-4 ring-8 ring-violet-50/50 mx-auto">
                             <Download className="w-8 h-8 text-violet-600" />

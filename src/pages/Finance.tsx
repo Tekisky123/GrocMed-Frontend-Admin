@@ -23,15 +23,20 @@ import {
     ArrowUpRight, ArrowDownLeft, Download, Info
 } from "lucide-react";
 import { accountingApi, Ledger, JournalEntry } from "@/api/accountingApi";
+import { orderApi } from "@/api/orderApi";
 import { exportToCSV } from "@/utils/exportUtils";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
+import { ReportDownloadModal, DateRangeFilter } from "@/components/ui/ReportDownloadModal";
 
 type ActiveTab = "cash" | "bank" | "journal";
 
 const Finance = () => {
     const [activeTab, setActiveTab] = useState<ActiveTab>("cash");
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
     const [showJournalModal, setShowJournalModal] = useState(false);
     const [showLedgerModal, setShowLedgerModal] = useState(false);
+    const [orderMap, setOrderMap] = useState<Record<string, { shopName: string, customerName: string }>>({});
 
     // --- Dynamic State ---
     const [ledgers, setLedgers] = useState<Ledger[]>([]);
@@ -61,10 +66,25 @@ const Finance = () => {
     const fetchFinanceData = async () => {
         setLoading(true);
         try {
-            const [ledgerRes, journalRes] = await Promise.all([
+            const [ledgerRes, journalRes, ordersRes] = await Promise.all([
                 accountingApi.getLedgers(),
-                accountingApi.getJournals(1, 100)
+                accountingApi.getJournals(1, 100),
+                orderApi.getAllOrders().catch(() => null)
             ]);
+
+            // Map order short ID to customer shop name & name
+            const map: Record<string, { shopName: string, customerName: string }> = {};
+            if (ordersRes?.orders || ordersRes?.data) {
+                const ordersList = ordersRes.orders || ordersRes.data || [];
+                ordersList.forEach((o: any) => {
+                    const shortId = o._id.substring(o._id.length - 8).toUpperCase();
+                    map[shortId] = {
+                        shopName: o.customer?.shopName || "No Shop Name",
+                        customerName: o.customer?.name || "Customer"
+                    };
+                });
+            }
+            setOrderMap(map);
 
             // Flatten the grouped ledgers for simple dropdown use
             const flatLedgers: Ledger[] = [];
@@ -77,7 +97,6 @@ const Finance = () => {
             setJournals(journalRes?.data || []);
         } catch (error) {
             console.error("Failed to load finance data", error);
-            // toast.error("Failed to load finance data"); // Silent error to not spam if backend empty
         } finally {
             setLoading(false);
         }
@@ -87,7 +106,7 @@ const Finance = () => {
         fetchFinanceData();
     }, []);
 
-    const handleExport = () => {
+    const handleGenerateReport = ({ startDate, endDate }: DateRangeFilter) => {
         toast.loading("Preparing export...", { id: "finance-export" });
 
         let dataToExport = [];
@@ -95,8 +114,18 @@ const Finance = () => {
         else if (activeTab === 'bank') dataToExport = bankData;
         else dataToExport = journals;
 
+        if (startDate || endDate) {
+            dataToExport = dataToExport.filter(j => {
+                const itemDate = new Date(j.date);
+                if (isNaN(itemDate.getTime())) return false;
+                if (startDate && itemDate < startDate) return false;
+                if (endDate && itemDate > endDate) return false;
+                return true;
+            });
+        }
+
         const csvData = dataToExport.map(j => ({
-            Date: new Date(j.date).toLocaleDateString(),
+            Date: formatDateDDMMYYYY(j.date),
             "Voucher No": j.voucherNo,
             Type: j.type,
             Narration: j.narration,
@@ -104,7 +133,7 @@ const Finance = () => {
         }));
 
         exportToCSV(csvData, `Finance_Export_${activeTab}`);
-        toast.success("Finance report exported successfully!", { id: "finance-export" });
+        toast.success(`Finance report exported (${csvData.length} records)!`, { id: "finance-export" });
     };
 
     const handleSaveEntry = async () => {
@@ -192,6 +221,61 @@ const Finance = () => {
     const cashLedgerIds = ledgers.filter(l => (l.name || '').toLowerCase().includes('cash')).map(l => l._id);
     const bankLedgerIds = ledgers.filter(l => (l.name || '').toLowerCase().includes('bank') || l.subGroup === 'Bank').map(l => l._id);
 
+    // Extract Shop Name vs Customer Name from Order Map / Ledger Name
+    const getAccountDetails = (row: JournalEntry) => {
+        // 1. Match order short ID from voucherNo (e.g. SAL/55111518) or narration (Order #55111518)
+        let shortId = "";
+        if (row.voucherNo && row.voucherNo.includes('/')) {
+            shortId = row.voucherNo.split('/')[1].trim().toUpperCase();
+        } else if (row.narration && row.narration.includes('Order #')) {
+            const match = row.narration.match(/Order #([A-Za-z0-9]+)/);
+            if (match) shortId = match[1].trim().toUpperCase();
+        }
+
+        if (shortId && orderMap[shortId]) {
+            const ord = orderMap[shortId];
+            return {
+                shopName: ord.shopName || "No Shop Name",
+                customerName: ord.customerName
+            };
+        }
+
+        // 2. Parse narration if it contains Customer: ...
+        if (row.narration && row.narration.includes('Customer:')) {
+            const customerStr = row.narration.split('Customer:')[1].trim();
+            if (customerStr.includes(' (')) {
+                const parts = customerStr.split(' (');
+                return {
+                    shopName: parts[0].trim(),
+                    customerName: parts[1].replace(')', '').trim()
+                };
+            }
+            return {
+                shopName: "No Shop Name",
+                customerName: customerStr
+            };
+        }
+
+        // 3. Target entry ledger fallback
+        const targetEntry = row.entries?.find((e: any) => {
+            const name = (typeof e.ledgerId === 'object' ? e.ledgerId?.name : '') || '';
+            return !name.toLowerCase().includes('cash') && !name.toLowerCase().includes('bank');
+        }) || row.entries?.[0];
+
+        const ledgerObj = typeof targetEntry?.ledgerId === 'object' ? targetEntry.ledgerId : null;
+        const rawName = ledgerObj?.name || 'General Account';
+
+        if (rawName.includes(' - ')) {
+            const parts = rawName.split(' - ');
+            return { shopName: parts[0], customerName: parts.slice(1).join(' - ') };
+        }
+        if (rawName.includes(' (')) {
+            const parts = rawName.split(' (');
+            return { shopName: parts[0], customerName: parts[1].replace(')', '') };
+        }
+        return { shopName: rawName, customerName: null };
+    };
+
     // Filter Journal Registries
     const cashData = journals.filter(j => j.entries.some((e: any) => cashLedgerIds.includes(e.ledgerId?._id || e.ledgerId)));
     const bankData = journals.filter(j => j.entries.some((e: any) => bankLedgerIds.includes(e.ledgerId?._id || e.ledgerId)));
@@ -226,8 +310,8 @@ const Finance = () => {
                     <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Cash Book, Bank Book & Journal Entries</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" onClick={handleExport} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
-                        <Download className="w-4 h-4" /> Export
+                    <Button variant="outline" onClick={() => setShowReportModal(true)} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
+                        <Download className="w-4 h-4 text-primary" /> Export CSV
                     </Button>
                     <Button onClick={() => setShowLedgerModal(true)} className="h-11 px-5 rounded-2xl bg-primary hover:bg-primary/90 text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-primary/20 gap-2 p-0 sm:px-5">
                         <Plus className="w-4 h-4 hidden sm:block" /> New Ledger
@@ -355,6 +439,7 @@ const Finance = () => {
                                 <tr className="bg-gray-50/50 border-b border-gray-50">
                                     <th className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-6">Voucher No.</th>
                                     <th className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-6">Date</th>
+                                    <th className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-6">Shop / Account</th>
                                     <th className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-6">Narration</th>
                                     <th className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-6">Type</th>
                                     <th className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-6 text-right">Amount</th>
@@ -362,30 +447,37 @@ const Finance = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {loading ? (
-                                    <tr><td colSpan={5} className="text-center py-8 text-gray-400">Loading...</td></tr>
+                                    <tr><td colSpan={6} className="text-center py-8 text-gray-400">Loading...</td></tr>
                                 ) : cashData.length === 0 ? (
-                                    <tr><td colSpan={5} className="text-center py-8 text-gray-400">No cash transactions found</td></tr>
-                                ) : cashData.map(row => (
-                                    <tr key={row._id} className="hover:bg-gray-50/30 transition-colors border-b border-gray-50/50 last:border-0">
-                                        <td className="font-mono font-semibold text-gray-700 px-6 py-4">{row.voucherNo}</td>
-                                        <td className="text-gray-600 whitespace-nowrap px-6 py-4">{new Date(row.date).toLocaleDateString()}</td>
-                                        <td className="font-medium text-gray-900 px-6 py-4">{row.narration}</td>
-                                        <td className="px-6 py-4">
-                                            {row.type === "Receipt" ? (
-                                                <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 w-fit uppercase">
-                                                    <ArrowDownLeft className="w-3 h-3" /> <span className="hidden xs:inline">Receipt</span>
-                                                </Badge>
-                                            ) : (
-                                                <Badge className="bg-red-50 text-red-600 border-red-200 text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 w-fit uppercase">
-                                                    <ArrowUpRight className="w-3 h-3" /> <span className="hidden xs:inline">Payment</span>
-                                                </Badge>
-                                            )}
-                                        </td>
-                                        <td className={`font-black whitespace-nowrap px-6 py-4 text-right ${row.type === "Receipt" ? "text-green-600" : "text-red-500"}`}>
-                                            {row.type === "Receipt" ? "+" : "-"}₹{row.totalAmount?.toLocaleString()}
-                                        </td>
-                                    </tr>
-                                ))}
+                                    <tr><td colSpan={6} className="text-center py-8 text-gray-400">No cash transactions found</td></tr>
+                                ) : cashData.map(row => {
+                                    const acc = getAccountDetails(row);
+                                    return (
+                                        <tr key={row._id} className="hover:bg-gray-50/30 transition-colors border-b border-gray-50/50 last:border-0">
+                                            <td className="font-mono font-semibold text-gray-700 px-6 py-4">{row.voucherNo}</td>
+                                            <td className="text-gray-600 whitespace-nowrap px-6 py-4">{formatDateDDMMYYYY(row.date)}</td>
+                                            <td className="px-6 py-4">
+                                                <p className="text-sm font-bold text-gray-900">{acc.shopName}</p>
+                                                {acc.customerName && <p className="text-[11px] font-semibold text-indigo-600 mt-0.5">{acc.customerName}</p>}
+                                            </td>
+                                            <td className="font-medium text-gray-900 px-6 py-4">{row.narration}</td>
+                                            <td className="px-6 py-4">
+                                                {row.type === "Receipt" ? (
+                                                    <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 w-fit uppercase">
+                                                        <ArrowDownLeft className="w-3 h-3" /> <span className="hidden xs:inline">Receipt</span>
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge className="bg-red-50 text-red-600 border-red-200 text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 w-fit uppercase">
+                                                        <ArrowUpRight className="w-3 h-3" /> <span className="hidden xs:inline">Payment</span>
+                                                    </Badge>
+                                                )}
+                                            </td>
+                                            <td className={`font-black whitespace-nowrap px-6 py-4 text-right ${row.type === "Receipt" ? "text-green-600" : "text-red-500"}`}>
+                                                {row.type === "Receipt" ? "+" : "-"}₹{row.totalAmount?.toLocaleString()}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -402,25 +494,33 @@ const Finance = () => {
                         <table className="rtable">
                             <thead>
                                 <tr className="bg-gray-50/50 border-b border-gray-50">
-                                    <th>Voucher No.</th>
-                                    <th>Date</th>
-                                    <th>Narration</th>
-                                    <th>Amount</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Voucher No.</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Shop / Account</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Narration</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {loading ? (
-                                    <tr><td colSpan={4} className="text-center py-8 text-gray-400">Loading...</td></tr>
+                                    <tr><td colSpan={5} className="text-center py-8 text-gray-400">Loading...</td></tr>
                                 ) : bankData.length === 0 ? (
-                                    <tr><td colSpan={4} className="text-center py-8 text-gray-400">No bank transactions found</td></tr>
-                                ) : bankData.map(row => (
-                                    <tr key={row._id} className="hover:bg-gray-50/30 transition-colors">
-                                        <td className="font-mono font-semibold text-gray-700">{row.voucherNo}</td>
-                                        <td className="text-gray-600 whitespace-nowrap">{new Date(row.date).toLocaleDateString()}</td>
-                                        <td className="font-medium text-gray-900">{row.narration}</td>
-                                        <td className="font-bold text-gray-900 whitespace-nowrap">₹{row.totalAmount?.toLocaleString()}</td>
-                                    </tr>
-                                ))}
+                                    <tr><td colSpan={5} className="text-center py-8 text-gray-400">No bank transactions found</td></tr>
+                                ) : bankData.map(row => {
+                                    const acc = getAccountDetails(row);
+                                    return (
+                                        <tr key={row._id} className="hover:bg-gray-50/30 transition-colors">
+                                            <td className="font-mono font-semibold text-gray-700 px-6 py-4">{row.voucherNo}</td>
+                                            <td className="text-gray-600 whitespace-nowrap px-6 py-4">{formatDateDDMMYYYY(row.date)}</td>
+                                            <td className="px-6 py-4">
+                                                <p className="text-sm font-bold text-gray-900">{acc.shopName}</p>
+                                                {acc.customerName && <p className="text-[11px] font-semibold text-indigo-600 mt-0.5">{acc.customerName}</p>}
+                                            </td>
+                                            <td className="font-medium text-gray-900 px-6 py-4">{row.narration}</td>
+                                            <td className="font-bold text-gray-900 whitespace-nowrap px-6 py-4">₹{row.totalAmount?.toLocaleString()}</td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -442,31 +542,39 @@ const Finance = () => {
                         <table className="rtable">
                             <thead>
                                 <tr className="bg-gray-50/50 border-b border-gray-50">
-                                    <th>Voucher No.</th>
-                                    <th>Date</th>
-                                    <th>Narration</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Voucher No.</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Shop / Account</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Narration</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
+                                    <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 {loading ? (
-                                    <tr><td colSpan={5} className="text-center py-8 text-gray-400">Loading...</td></tr>
+                                    <tr><td colSpan={6} className="text-center py-8 text-gray-400">Loading...</td></tr>
                                 ) : nonCashData.length === 0 ? (
-                                    <tr><td colSpan={5} className="text-center py-8 text-gray-400">No journal entries found</td></tr>
-                                ) : nonCashData.map(row => (
-                                    <tr key={row._id} className="hover:bg-gray-50/30 transition-colors">
-                                        <td className="font-mono font-semibold text-gray-700">{row.voucherNo}</td>
-                                        <td className="text-gray-600 whitespace-nowrap">{new Date(row.date).toLocaleDateString()}</td>
-                                        <td className="font-medium text-gray-900 truncate max-w-[200px] block my-2">{row.narration}</td>
-                                        <td className="font-bold text-gray-900 whitespace-nowrap">₹{row.totalAmount?.toLocaleString()}</td>
-                                        <td>
-                                            <Badge className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${row.status === "Posted" ? "bg-green-50 text-green-700 border-green-200" : "bg-yellow-50 text-yellow-700 border-yellow-200"}`}>
-                                                {row.status}
-                                            </Badge>
-                                        </td>
-                                    </tr>
-                                ))}
+                                    <tr><td colSpan={6} className="text-center py-8 text-gray-400">No journal entries found</td></tr>
+                                ) : nonCashData.map(row => {
+                                    const acc = getAccountDetails(row);
+                                    return (
+                                        <tr key={row._id} className="hover:bg-gray-50/30 transition-colors">
+                                            <td className="font-mono font-semibold text-gray-700 px-6 py-4">{row.voucherNo}</td>
+                                            <td className="text-gray-600 whitespace-nowrap px-6 py-4">{formatDateDDMMYYYY(row.date)}</td>
+                                            <td className="px-6 py-4">
+                                                <p className="text-sm font-bold text-gray-900">{acc.shopName}</p>
+                                                {acc.customerName && <p className="text-[11px] font-semibold text-indigo-600 mt-0.5">{acc.customerName}</p>}
+                                            </td>
+                                            <td className="font-medium text-gray-900 truncate max-w-[200px] px-6 py-4">{row.narration}</td>
+                                            <td className="font-bold text-gray-900 whitespace-nowrap px-6 py-4">₹{row.totalAmount?.toLocaleString()}</td>
+                                            <td className="px-6 py-4">
+                                                <Badge className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${row.status === "Posted" ? "bg-green-50 text-green-700 border-green-200" : "bg-yellow-50 text-yellow-700 border-yellow-200"}`}>
+                                                    {row.status}
+                                                </Badge>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -632,6 +740,13 @@ const Finance = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <ReportDownloadModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                title={`Export ${activeTab.toUpperCase()} Ledger`}
+                description="Select date range (Daily, Weekly, Monthly, Yearly, All or Custom) to export ledger entries."
+                onGenerate={handleGenerateReport}
+            />
         </div>
     );
 };

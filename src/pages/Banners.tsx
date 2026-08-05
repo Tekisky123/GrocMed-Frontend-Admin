@@ -197,7 +197,7 @@ const Banners = () => {
 
       {/* Add/Edit Modal */}
       <Dialog open={showAddModal || !!editingBanner} onOpenChange={() => { setShowAddModal(false); setEditingBanner(null); }}>
-        <DialogContent className="max-w-xl rounded-3xl overflow-hidden">
+        <DialogContent className="max-w-xl rounded-3xl max-h-[90vh] overflow-y-auto custom-scrollbar">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black text-gray-900">
               {editingBanner ? "Edit Banner" : "Add New Banner"}

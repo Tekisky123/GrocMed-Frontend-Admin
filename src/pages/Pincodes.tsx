@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { adminApi } from "@/api/adminApi";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -321,7 +322,7 @@ const Pincodes = () => {
                                         </Badge>
                                     </td>
                                     <td className="px-5 py-4 text-xs text-gray-400 whitespace-nowrap">
-                                        {new Date(p.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        {formatDateDDMMYYYY(p.createdAt)}
                                     </td>
                                     <td className="px-5 py-4">
                                         <div className="flex items-center gap-1">
@@ -353,7 +354,7 @@ const Pincodes = () => {
 
             {/* ── Add / Edit Modal ── */}
             <Dialog open={showModal} onOpenChange={setShowModal}>
-                <DialogContent className="max-w-sm rounded-[28px] p-0 border-none shadow-2xl overflow-hidden">
+                <DialogContent className="max-w-sm rounded-[28px] p-0 border-none shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
                     <div className={`px-8 pt-8 pb-5 ${editId ? "bg-blue-50" : "bg-gradient-to-br from-primary/5 to-green-50"}`}>
                         <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${editId ? "bg-blue-500" : "bg-gradient-to-br from-primary to-green-600"}`}>
@@ -493,7 +494,7 @@ const Pincodes = () => {
 
             {/* ── Bulk Import ── */}
             <Dialog open={showBulkModal} onOpenChange={setShowBulkModal}>
-                <DialogContent className="max-w-md rounded-[28px] p-0 border-none shadow-2xl overflow-hidden">
+                <DialogContent className="max-w-md rounded-[28px] p-0 border-none shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
                     <div className="px-8 pt-8 pb-5 bg-gradient-to-br from-violet-50 to-purple-50">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-2xl bg-violet-500 flex items-center justify-center">

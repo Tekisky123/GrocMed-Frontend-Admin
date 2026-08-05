@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatDateDDMMYYYY } from './dateUtils';
 
 export const downloadInvoicePDF = (invoice: any, action: 'download' | 'print' = 'download') => {
     const doc = new jsPDF();
@@ -40,11 +41,8 @@ export const downloadInvoicePDF = (invoice: any, action: 'download' | 'print' = 
     doc.setFontSize(9);
     doc.setTextColor(textLight[0], textLight[1], textLight[2]);
     const companyDetails = [
-        "ZHPL - SS Hyderabad Moosarambagh ES117",
-        "16-2-705/1/1, Old Malakpet, Hyderabad 500036",
-        "GSTIN: 36AAACZ8867B1Z1",
-        "FSSAI: 10020064002537 | CIN: U74900DL2015PTC286208",
-        "PAN: AAACZ8867B | Place of Supply: Telangana"
+        "GrocMed Pvt Ltd",
+        "Tax Invoice"
     ];
     companyDetails.forEach((line) => {
         doc.text(line, 14, yPos);
@@ -67,7 +65,7 @@ export const downloadInvoicePDF = (invoice: any, action: 'download' | 'print' = 
     };
 
     addMetaRow("Invoice No:", invoice.id || "N/A", yPos);
-    addMetaRow("Date:", invoice.date || "N/A", yPos + 6);
+    addMetaRow("Date:", formatDateDDMMYYYY(invoice.date) || "N/A", yPos + 6);
     addMetaRow("Payment Status:", invoice.status || "N/A", yPos + 12);
     addMetaRow("Payment Method:", invoice.method || "N/A", yPos + 18);
 
@@ -86,9 +84,22 @@ export const downloadInvoicePDF = (invoice: any, action: 'download' | 'print' = 
     yPos += 6;
 
     doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-    doc.setFontSize(12);
-    doc.text(invoice.customer || "Walk-in Customer", 14, yPos);
-    yPos += 5;
+    if (invoice.shopName) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.text(invoice.shopName, 14, yPos);
+        yPos += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+        doc.text(`Customer: ${invoice.customer || "Walk-in Customer"}`, 14, yPos);
+        yPos += 5;
+    } else {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text(invoice.customer || "Walk-in Customer", 14, yPos);
+        yPos += 5;
+    }
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);

@@ -28,6 +28,8 @@ import { accountingApi, Vendor } from "@/api/accountingApi";
 import { productApi } from "@/api/productApi";
 import { exportToCSV } from "@/utils/exportUtils";
 import { downloadPurchaseInvoicePDF } from "@/utils/exportPurchasePdfUtils";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
+import { ReportDownloadModal, DateRangeFilter } from "@/components/ui/ReportDownloadModal";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 type ActiveView = "invoices" | "vendors";
@@ -53,8 +55,9 @@ interface PurchaseItem {
 const Purchases = () => {
     const [activeView, setActiveView] = useState<ActiveView>("invoices");
     const [showAddModal, setShowAddModal] = useState(false);
-    const [showViewModal, setShowViewModal] = useState(false);
+    const [selectedVendor, setSelectedVendor] = useState<any>(null);
     const [viewPurchase, setViewPurchase] = useState<any>(null);
+    const [showReportModal, setShowReportModal] = useState(false);
     const [search, setSearch] = useState("");
     const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -419,10 +422,22 @@ const Purchases = () => {
         }
     };
 
-    const handleExport = () => {
+    const handleGenerateReport = ({ startDate, endDate }: DateRangeFilter) => {
         toast.loading("Exporting purchase register...", { id: "pur-export" });
-        const csvData = purchases.map(p => ({
-            Date: new Date(p.date).toLocaleDateString(),
+
+        let filtered = purchases;
+        if (startDate || endDate) {
+            filtered = purchases.filter(p => {
+                const itemDate = new Date(p.date);
+                if (isNaN(itemDate.getTime())) return false;
+                if (startDate && itemDate < startDate) return false;
+                if (endDate && itemDate > endDate) return false;
+                return true;
+            });
+        }
+
+        const csvData = filtered.map(p => ({
+            Date: formatDateDDMMYYYY(p.date),
             "Invoice No": p.invoiceNo,
             Vendor: p.supplierName,
             GSTIN: p.gstin,
@@ -431,7 +446,7 @@ const Purchases = () => {
             Status: p.status
         }));
         exportToCSV(csvData, "Purchase_Register");
-        toast.success("Purchase register exported!", { id: "pur-export" });
+        toast.success(`Purchase register exported (${csvData.length} records)!`, { id: "pur-export" });
     };
 
     const getStatusBadge = (status: string) => {
@@ -452,7 +467,7 @@ const Purchases = () => {
                     <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Professional Purchase Register & Batch Entry</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" onClick={handleExport} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
+                    <Button variant="outline" onClick={() => setShowReportModal(true)} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
                         <Download className="w-4 h-4 text-primary" /> Export
                     </Button>
                     <Button
@@ -515,7 +530,7 @@ const Purchases = () => {
                                         <tr key={p._id} className="hover:bg-orange-50/20 transition-all duration-200 group">
                                             <td className="px-6 py-5 text-xs font-black text-gray-400">{idx + 1}</td>
                                             <td className="px-6 py-5 text-sm font-mono font-bold text-gray-800 tracking-tighter">{p.invoiceNo}</td>
-                                            <td className="px-6 py-5 text-sm font-semibold text-gray-500">{new Date(p.date).toLocaleDateString()}</td>
+                                            <td className="px-6 py-5 text-sm font-semibold text-gray-500">{formatDateDDMMYYYY(p.date)}</td>
                                             <td className="px-6 py-5">
                                                <div className="flex flex-col">
                                                  <span className="text-sm font-black text-gray-900 leading-none mb-1">{p.supplierName}</span>
@@ -682,7 +697,7 @@ const Purchases = () => {
 
             {/* Record Purchase Modal - Table Based */}
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent className="max-w-[95vw] lg:max-w-7xl xl:max-w-[1400px] w-full rounded-[40px] p-0 border-none shadow-3xl overflow-hidden bg-white ring-1 ring-black/5 animate-in zoom-in-95 duration-300">
+                <DialogContent className="max-w-[95vw] lg:max-w-7xl xl:max-w-[1400px] w-full rounded-[40px] p-0 border-none shadow-3xl max-h-[92vh] overflow-y-auto custom-scrollbar bg-white ring-1 ring-black/5 animate-in zoom-in-95 duration-300">
                     <div className="flex h-full flex-col max-h-[90vh] w-full max-w-full min-w-0 overflow-hidden">
                         <div className="p-8 sm:p-10 pb-6 bg-gradient-to-r from-gray-50/50 to-white border-b border-gray-100">
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -887,7 +902,7 @@ const Purchases = () => {
 
             {/* View Purchase Details Modal */}
             <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
-                <DialogContent className="max-w-[95vw] lg:max-w-4xl w-full rounded-[40px] p-0 border-none shadow-3xl overflow-hidden bg-white ring-1 ring-black/5 animate-in zoom-in-95 duration-300">
+                <DialogContent className="max-w-[95vw] lg:max-w-4xl w-full rounded-[40px] p-0 border-none shadow-3xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-white ring-1 ring-black/5 animate-in zoom-in-95 duration-300">
                     {viewPurchase && (
                         <div className="flex h-full flex-col max-h-[90vh] w-full min-w-0 overflow-hidden">
                             <div className="p-8 pb-6 bg-gradient-to-r from-gray-50/50 to-white border-b border-gray-100 flex justify-between items-start">
@@ -910,7 +925,7 @@ const Purchases = () => {
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</label>
-                                        <p className="text-base font-semibold text-gray-700">{new Date(viewPurchase.date).toLocaleDateString()}</p>
+                                        <p className="text-base font-semibold text-gray-700">{formatDateDDMMYYYY(viewPurchase.date)}</p>
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</label>
@@ -956,7 +971,7 @@ const Purchases = () => {
 
             {/* Delete Confirmation Modal */}
             <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
-                <DialogContent className="sm:max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl">
+                <DialogContent className="sm:max-w-md rounded-[32px] p-0 max-h-[90vh] overflow-y-auto custom-scrollbar border-none shadow-2xl">
                     <div className="p-8 pb-6 flex flex-col items-center text-center">
                         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">
                             <AlertTriangle className="w-8 h-8 text-red-600" />
@@ -1056,7 +1071,7 @@ const Purchases = () => {
 
             {/* Delete Vendor Confirmation Dialog */}
             <Dialog open={deleteVendorId !== null} onOpenChange={(open) => !open && setDeleteVendorId(null)}>
-                <DialogContent className="max-w-md rounded-[32px] p-0 overflow-hidden border-none shadow-2xl bg-white">
+                <DialogContent className="max-w-md rounded-[32px] p-0 max-h-[90vh] overflow-y-auto custom-scrollbar border-none shadow-2xl bg-white">
                     <div className="p-8 pb-6 flex flex-col items-center text-center">
                         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6">
                             <AlertTriangle className="w-8 h-8 text-red-600" />
@@ -1076,6 +1091,13 @@ const Purchases = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <ReportDownloadModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                title="Export Purchase Register"
+                description="Select date range (Daily, Weekly, Monthly, Yearly, All or Custom) to export purchase data."
+                onGenerate={handleGenerateReport}
+            />
         </div>
     );
 };

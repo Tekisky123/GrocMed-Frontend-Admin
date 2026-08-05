@@ -24,12 +24,15 @@ import {
 import { accountingApi } from "@/api/accountingApi";
 import { adminApi } from "@/api/adminApi";
 import { exportToCSV } from "@/utils/exportUtils";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
+import { ReportDownloadModal, DateRangeFilter } from "@/components/ui/ReportDownloadModal";
 
 type StatView = "members" | "directors" | "transfers" | "charges";
 
 const StatutoryRegisters = () => {
     const [view, setView] = useState<StatView>("members");
     const [showAddMember, setShowAddMember] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
     const [showTransfer, setShowTransfer] = useState(false);
     const [showAddDirector, setShowAddDirector] = useState(false);
     const [showAddCharge, setShowAddCharge] = useState(false);
@@ -108,16 +111,28 @@ const StatutoryRegisters = () => {
         fetchData();
     }, []);
 
-    const handleExportROC = () => {
+    const handleGenerateReport = ({ startDate, endDate }: DateRangeFilter) => {
         toast.loading("Generating ROC report...", { id: "roc-export" });
 
         let dataToExport: any[] = [];
         let filename = `Statutory_Register_${view}`;
 
         if (view === "members" || view === "transfers") {
-            dataToExport = members.map(s => {
+            let filteredMembers = members;
+            if (startDate || endDate) {
+                filteredMembers = members.filter(s => {
+                    if (!s.allotmentDate) return false;
+                    const d = new Date(s.allotmentDate);
+                    if (isNaN(d.getTime())) return false;
+                    if (startDate && d < startDate) return false;
+                    if (endDate && d > endDate) return false;
+                    return true;
+                });
+            }
+
+            dataToExport = filteredMembers.map(s => {
                 const folio = s.folio || s.folioNo || s.folioNumber || "N/A";
-                const date = s.allotmentDate ? new Date(s.allotmentDate).toLocaleDateString() : "—";
+                const date = s.allotmentDate ? formatDateDDMMYYYY(s.allotmentDate) : "—";
                 const value = s.totalValue || (Number(s.sharesHeld || 0) * 10);
                 
                 return {
@@ -131,30 +146,54 @@ const StatutoryRegisters = () => {
                 };
             });
         } else if (view === "directors") {
-            dataToExport = directors.map(d => ({
+            let filteredDirectors = directors;
+            if (startDate || endDate) {
+                filteredDirectors = directors.filter(d => {
+                    if (!d.appointed) return false;
+                    const dateObj = new Date(d.appointed);
+                    if (isNaN(dateObj.getTime())) return false;
+                    if (startDate && dateObj < startDate) return false;
+                    if (endDate && dateObj > endDate) return false;
+                    return true;
+                });
+            }
+
+            dataToExport = filteredDirectors.map(d => ({
                 DIN: d.din || "—",
                 Name: d.name || "—",
                 Designation: d.designation || "Director",
-                "Date of Appointment": d.appointed ? new Date(d.appointed).toLocaleDateString() : "—",
+                "Date of Appointment": d.appointed ? formatDateDDMMYYYY(d.appointed) : "—",
                 Nationality: d.nationality || "Indian",
                 "Shareholding (%)": d.shareholding || "0%"
             }));
         } else if (view === "charges") {
-            dataToExport = charges.map(c => ({
+            let filteredCharges = charges;
+            if (startDate || endDate) {
+                filteredCharges = charges.filter(c => {
+                    if (!c.creationDate) return false;
+                    const dateObj = new Date(c.creationDate);
+                    if (isNaN(dateObj.getTime())) return false;
+                    if (startDate && dateObj < startDate) return false;
+                    if (endDate && dateObj > endDate) return false;
+                    return true;
+                });
+            }
+
+            dataToExport = filteredCharges.map(c => ({
                 "Charge ID": c.chargeId || "—",
                 "Charge Holder": c.chargeHolder || "—",
                 Amount: c.amount || 0,
-                "Creation Date": c.creationDate ? new Date(c.creationDate).toLocaleDateString() : "—",
+                "Creation Date": c.creationDate ? formatDateDDMMYYYY(c.creationDate) : "—",
                 Status: c.status || "Active"
             }));
         }
 
         if (dataToExport.length === 0) {
-            return toast.error("No data found to export", { id: "roc-export" });
+            return toast.error("No data found to export for selected range", { id: "roc-export" });
         }
 
         exportToCSV(dataToExport, filename);
-        toast.success("ROC register exported successfully!", { id: "roc-export" });
+        toast.success(`ROC register exported (${dataToExport.length} records)!`, { id: "roc-export" });
     };
 
     // --- Save Handlers ---
@@ -270,8 +309,8 @@ const StatutoryRegisters = () => {
                     <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Companies Act Mandatory Registers — GrocMed Pvt Ltd</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" onClick={handleExportROC} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2">
-                        <Download className="w-4 h-4" /> Export ROC Report
+                    <Button variant="outline" onClick={() => setShowReportModal(true)} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
+                        <Download className="w-4 h-4 text-slate-800" /> Export ROC Report
                     </Button>
                 </div>
             </div>
@@ -369,7 +408,7 @@ const StatutoryRegisters = () => {
                                 ) : members.map((m, idx) => {
                                     const displayFolio = m.folio || m.folioNo || m.folioNumber || `F-${idx + 1}`;
                                     const displayValue = m.totalValue || (Number(m.sharesHeld || 0) * 10);
-                                    const displayDate = m.allotmentDate ? new Date(m.allotmentDate).toLocaleDateString() : "—";
+                                    const displayDate = m.allotmentDate ? formatDateDDMMYYYY(m.allotmentDate) : "—";
                                     
                                     return (
                                         <tr key={m._id || idx} className="hover:bg-gray-50/30 transition-colors">
@@ -432,7 +471,7 @@ const StatutoryRegisters = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700">{d.designation || "Director"}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">{d.appointed ? new Date(d.appointed).toLocaleDateString() : "—"}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">{d.appointed ? formatDateDDMMYYYY(d.appointed) : "—"}</td>
                                         <td className="px-6 py-4 text-sm text-gray-600">{d.nationality || "Indian"}</td>
                                         <td className="px-6 py-4 text-sm font-bold text-gray-900">{d.shareholding || "0%"}</td>
                                         <td className="px-6 py-4"><Badge className="bg-green-50 text-green-700 border-green-200 text-xs font-semibold px-2.5 py-1 rounded-lg">{d.status || "Active"}</Badge></td>
@@ -490,7 +529,7 @@ const StatutoryRegisters = () => {
                                             <div className="flex items-center gap-3 mt-2">
                                                 <span className="text-xs text-gray-400">Charge ID: <span className="font-mono font-semibold text-gray-600">{c.chargeId}</span></span>
                                                 <span className="text-xs text-gray-400">ROC: <span className="font-mono font-semibold text-gray-600">{c.rocId}</span></span>
-                                                <span className="text-xs text-gray-400">Created: {new Date(c.createdDate).toLocaleDateString()}</span>
+                                                <span className="text-xs text-gray-400">Created: {formatDateDDMMYYYY(c.createdDate)}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -673,6 +712,13 @@ const StatutoryRegisters = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <ReportDownloadModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                title="Export Statutory ROC Report"
+                description="Select date range (Daily, Weekly, Monthly, Yearly, All or Custom) to export statutory entries."
+                onGenerate={handleGenerateReport}
+            />
         </div>
     );
 };

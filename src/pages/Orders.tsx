@@ -38,9 +38,13 @@ import {
 } from "lucide-react";
 import { orderApi, Order } from "@/api/orderApi";
 import { deliveryPartnerApi } from "@/api/deliveryPartnerApi";
+import { deliverySlotApi } from "@/api/deliverySlotApi";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { downloadOrderInvoicePDF } from "@/utils/exportOrderPdfUtils";
+import { exportToCSV } from "@/utils/exportUtils";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
+import { ReportDownloadModal, DateRangeFilter } from "@/components/ui/ReportDownloadModal";
 
 const safeFormatDate = (dateVal: any, formatStr: string) => {
   if (!dateVal) return "N/A";
@@ -53,11 +57,36 @@ const safeFormatDate = (dateVal: any, formatStr: string) => {
   }
 };
 
+const getDeliveredTime = (order: Order) => {
+  if (order.orderStatus !== "Delivered") return null;
+  const track = order.trackingHistory?.find(t => t.status === "Delivered");
+  if (track?.timestamp) {
+    return safeFormatDate(track.timestamp, "dd/MM/yyyy hh:mm a");
+  }
+  if (order.updatedAt) {
+    return safeFormatDate(order.updatedAt, "dd/MM/yyyy hh:mm a");
+  }
+  return null;
+};
+
+const getSlotTimingText = (slotVal?: string, slotsList: any[] = []) => {
+  if (!slotVal) return "";
+  if (slotVal.includes(":") || slotVal.includes("AM") || slotVal.includes("PM")) {
+    return slotVal;
+  }
+  const matched = slotsList.find(s => s.name?.toLowerCase() === slotVal.toLowerCase() || s._id === slotVal);
+  if (matched && matched.startTime && matched.endTime) {
+    return `${matched.startTime} - ${matched.endTime}`;
+  }
+  return "";
+};
+
 const Orders = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatus, setNewStatus] = useState("");
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
@@ -77,7 +106,14 @@ const Orders = () => {
     queryFn: deliveryPartnerApi.getAllPartners,
   });
 
+  // Fetch delivery slots for timing lookup
+  const { data: slotsResponse } = useQuery({
+    queryKey: ['deliverySlots'],
+    queryFn: deliverySlotApi.getAll,
+  });
+
   const deliveryPartners = (partnersResponse?.data || []).filter((p: any) => p.isActive);
+  const deliverySlots = slotsResponse?.data || [];
 
   const allOrders = ordersResponse?.data || [];
 
@@ -149,6 +185,39 @@ const Orders = () => {
     }
   };
 
+  const handleGenerateReport = ({ startDate, endDate }: DateRangeFilter) => {
+    toast.loading("Exporting orders...", { id: "orders-export" });
+
+    let targetOrders = orders;
+    if (startDate || endDate) {
+      targetOrders = orders.filter(o => {
+        const itemDate = new Date(o.createdAt);
+        if (isNaN(itemDate.getTime())) return false;
+        if (startDate && itemDate < startDate) return false;
+        if (endDate && itemDate > endDate) return false;
+        return true;
+      });
+    }
+
+    const csvData = targetOrders.map(o => ({
+      "Order ID": o._id.substring(o._id.length - 8).toUpperCase(),
+      "Shop Name": o.customer?.shopName || "No Shop Name",
+      "Customer Name": o.customer?.name || "Walk-in Customer",
+      "Customer Phone": o.customer?.phone || "N/A",
+      "Order Placed Date": safeFormatDate(o.createdAt, 'dd/MM/yyyy hh:mm a'),
+      "Delivery Slot Name": o.deliverySlot || "N/A",
+      "Slot Timing": getSlotTimingText(o.deliverySlot, deliverySlots) || "N/A",
+      "Slot Date": o.deliveryDate ? safeFormatDate(o.deliveryDate, 'dd/MM/yyyy') : "N/A",
+      "Delivered Date & Time": getDeliveredTime(o) || (o.orderStatus === 'Delivered' ? 'Delivered' : 'N/A'),
+      "Total Amount": o.totalAmount,
+      "Payment Status": o.paymentStatus,
+      "Order Status": o.orderStatus || o.status
+    }));
+
+    exportToCSV(csvData, "Orders_Report");
+    toast.success(`Orders report exported (${csvData.length} records)!`, { id: "orders-export" });
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "Delivered": return <CheckCircle2 className="w-3.5 h-3.5" />;
@@ -165,10 +234,13 @@ const Orders = () => {
           <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Orders</h1>
           <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Track and manage customer orders.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Badge variant="outline" className="px-3 py-1 rounded-full border-primary/20 bg-primary/5 text-primary font-normal">
             {filteredOrders.length} Total
           </Badge>
+          <Button variant="outline" onClick={() => setShowReportModal(true)} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
+            <Download className="w-4 h-4 text-primary" /> Export Orders
+          </Button>
         </div>
       </div>
 
@@ -284,13 +356,10 @@ const Orders = () => {
                       <p className="text-sm font-bold text-gray-900">₹{order.totalAmount.toLocaleString()}</p>
                     </td>
                     <td className="px-6 py-5">
-                      <p className="text-xs font-semibold text-gray-900">{safeFormatDate(order.createdAt, 'MMM dd, yyyy hh:mm a')}</p>
-                      {order.deliverySlot && (
-                        <div className="mt-1.5 flex items-center gap-1 text-[11px] font-semibold text-orange-700 bg-orange-50 px-2 py-0.5 rounded-md w-fit border border-orange-200/60 shadow-xs">
-                          <Clock className="w-3 h-3 text-orange-500" />
-                          <span>Slot: {order.deliverySlot} {order.deliveryDate ? `(${safeFormatDate(order.deliveryDate, 'MMM dd')})` : ''}</span>
-                        </div>
-                      )}
+                      <p className="text-xs font-semibold text-gray-900 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-gray-400" />
+                        {safeFormatDate(order.createdAt, 'dd/MM/yyyy hh:mm a')}
+                      </p>
                     </td>
                     <td className="px-6 py-5">
                       <Badge className={`px-3 py-1.5 rounded-lg font-semibold text-[10px] uppercase tracking-wider border inline-flex items-center gap-1.5 ${getStatusColor(order.orderStatus)}`}>
@@ -589,15 +658,37 @@ const Orders = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-normal text-gray-600">Order Date</span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {safeFormatDate(selectedOrder.createdAt, 'MMM dd, yyyy hh:mm a')}
+                      {safeFormatDate(selectedOrder.createdAt, 'dd/MM/yyyy hh:mm a')}
                     </span>
                   </div>
                   {selectedOrder.deliverySlot && (
                     <div className="flex items-center justify-between pt-2 mt-2 border-t border-green-100">
-                      <span className="text-sm font-normal text-gray-600">Selected Delivery Slot</span>
-                      <Badge className="px-3 py-1.5 rounded-lg font-bold text-xs bg-orange-50 text-orange-700 border-orange-200 flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-orange-500" />
-                        {selectedOrder.deliverySlot} {selectedOrder.deliveryDate ? `(${safeFormatDate(selectedOrder.deliveryDate, 'MMM dd, yyyy')})` : ''}
+                      <span className="text-sm font-normal text-gray-600">Delivery Slot & Timing</span>
+                      <div className="text-right">
+                        <Badge className="px-3 py-1.5 rounded-lg font-bold text-xs bg-orange-50 text-orange-700 border-orange-200 flex items-center gap-1.5 ml-auto">
+                          <Clock className="w-3.5 h-3.5 text-orange-500" />
+                          {selectedOrder.deliverySlot}
+                        </Badge>
+                        {getSlotTimingText(selectedOrder.deliverySlot, deliverySlots) && (
+                          <p className="text-xs font-bold text-orange-600 mt-1">
+                            Timing: {getSlotTimingText(selectedOrder.deliverySlot, deliverySlots)}
+                          </p>
+                        )}
+                        {selectedOrder.deliveryDate && (
+                          <p className="text-[10px] text-gray-500 mt-0.5">
+                            Slot Date: {safeFormatDate(selectedOrder.deliveryDate, 'dd/MM/yyyy')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {selectedOrder.orderStatus === "Delivered" && (
+                    <div className="flex items-center justify-between pt-2 mt-2 border-t border-green-200 bg-green-50/80 p-2.5 rounded-xl">
+                      <span className="text-sm font-bold text-green-900 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-green-600" /> Delivered Date & Time
+                      </span>
+                      <Badge className="px-3 py-1 rounded-lg font-bold text-xs bg-green-600 text-white border-none">
+                        {getDeliveredTime(selectedOrder) || "Completed"}
                       </Badge>
                     </div>
                   )}
@@ -741,7 +832,7 @@ const Orders = () => {
                             <p className="text-xs font-normal text-gray-600 mt-1">{track.description}</p>
                           )}
                           <p className="text-[10px] text-gray-400 mt-1">
-                            {safeFormatDate(track.timestamp, 'MMM dd, yyyy hh:mm a')}
+                            {safeFormatDate(track.timestamp, 'dd/MM/yyyy hh:mm a')}
                           </p>
                         </div>
                       </div>
@@ -753,6 +844,13 @@ const Orders = () => {
           </DialogContent>
         </Dialog>
       )}
+      <ReportDownloadModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        title="Export Customer Orders Report"
+        description="Select date range (Daily, Weekly, Monthly, Yearly, All or Custom) to export order records."
+        onGenerate={handleGenerateReport}
+      />
     </div>
   );
 };

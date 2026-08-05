@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { accountingApi } from "@/api/accountingApi";
 import { exportToCSV } from "@/utils/exportUtils";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
 
 const categoryIcon: Record<string, any> = {
     'Computers & Peripherals': Monitor,
@@ -73,7 +74,7 @@ const FixedAssets = () => {
             "Asset ID": a.assetId || "N/A",
             "Asset Name": a.assetName || a.name || "Unnamed",
             Category: a.assetClass || a.category || "General",
-            "Purchase Date": a.purchaseDate ? new Date(a.purchaseDate).toLocaleDateString() : "—",
+            "Purchase Date": a.purchaseDate ? formatDateDDMMYYYY(a.purchaseDate) : "—",
             "Purchase Value": a.purchaseValue || a.cost || 0,
             "Depreciation Rate": (a.depreciationRate || 0) + "%",
             "Accumulated Dep.": a.accumulatedDepreciation || 0,
@@ -263,7 +264,7 @@ const FixedAssets = () => {
                                         <td className="px-5 py-4">
                                             <Badge className="bg-gray-100 text-gray-600 text-xs font-normal px-2 py-0.5 rounded-lg border-0 whitespace-nowrap">{aCategory}</Badge>
                                         </td>
-                                        <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{a.purchaseDate ? new Date(a.purchaseDate).toLocaleDateString() : "—"}</td>
+                                        <td className="px-5 py-4 text-sm text-gray-600 whitespace-nowrap">{a.purchaseDate ? formatDateDDMMYYYY(a.purchaseDate) : "—"}</td>
                                         <td className="px-5 py-4 text-sm font-bold text-gray-900">₹{aCost.toLocaleString()}</td>
                                         <td className="px-5 py-4 text-sm font-semibold text-gray-600">{a.depreciationRate || 0}%</td>
                                         <td className="px-5 py-4 text-sm text-red-500 font-semibold">₹{(a.accumulatedDepreciation || 0).toLocaleString()}</td>

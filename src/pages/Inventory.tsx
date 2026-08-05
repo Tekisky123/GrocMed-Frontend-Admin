@@ -25,6 +25,8 @@ import {
 import { accountingApi } from "@/api/accountingApi";
 import { productApi } from "@/api/productApi";
 import { exportToCSV } from "@/utils/exportUtils";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
+import { ReportDownloadModal, DateRangeFilter } from "@/components/ui/ReportDownloadModal";
 
 type View = "stock" | "movements";
 
@@ -33,6 +35,7 @@ const Inventory = () => {
     const [search, setSearch] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [showAdjust, setShowAdjust] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
 
     // Data State
     const [products, setProducts] = useState<any[]>([]);
@@ -69,7 +72,7 @@ const Inventory = () => {
         fetchData();
     }, []);
 
-    const handleExport = () => {
+    const handleGenerateReport = ({ startDate, endDate }: DateRangeFilter) => {
         toast.loading("Exporting inventory...", { id: "inv-export" });
 
         let dataToExport = [];
@@ -87,18 +90,29 @@ const Inventory = () => {
                 Status: item.alert ? "Low Stock" : "In Stock"
             }));
         } else {
-            dataToExport = movements.map(m => ({
-                Date: new Date(m.date).toLocaleDateString(),
+            let filteredMovements = movements;
+            if (startDate || endDate) {
+                filteredMovements = movements.filter(m => {
+                    const itemDate = new Date(m.date);
+                    if (isNaN(itemDate.getTime())) return false;
+                    if (startDate && itemDate < startDate) return false;
+                    if (endDate && itemDate > endDate) return false;
+                    return true;
+                });
+            }
+
+            dataToExport = filteredMovements.map(m => ({
+                Date: formatDateDDMMYYYY(m.date),
                 Product: m.productId?.name || "Unknown",
-                Type: m.type,
+                Type: m.movementType || m.type,
                 Quantity: m.quantity,
                 Reason: m.reason,
-                Status: m.status
+                Status: m.journalEntryId ? "POSTED" : "UNVOUCHERED"
             }));
         }
 
         exportToCSV(dataToExport, `Inventory_Export_${view}`);
-        toast.success("Inventory report exported!", { id: "inv-export" });
+        toast.success(`Inventory report exported (${dataToExport.length} records)!`, { id: "inv-export" });
     };
 
     const handleReorder = (name: string) => {
@@ -201,8 +215,8 @@ const Inventory = () => {
                     <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Stock Ledger & Advanced Adjustments</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" onClick={handleExport} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
-                        <Download className="w-4 h-4" /> Export
+                    <Button variant="outline" onClick={() => setShowReportModal(true)} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
+                        <Download className="w-4 h-4 text-primary" /> Export
                     </Button>
                     <Button onClick={() => setShowAdjust(true)} className="h-11 px-5 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-accent/30 gap-2">
                         <Plus className="w-4 h-4" /> Adjust Stock
@@ -364,7 +378,7 @@ const Inventory = () => {
                                     <tr><td colSpan={6} className="text-center py-8 text-gray-400">No adjustment history found.</td></tr>
                                 ) : movements.map(m => (
                                     <tr key={m._id} className="hover:bg-gray-50/30 transition-colors">
-                                        <td className="px-6 py-4 text-xs font-bold text-gray-500">{new Date(m.date).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 text-xs font-bold text-gray-500">{formatDateDDMMYYYY(m.date)}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
                                                 <span className="text-sm font-bold text-gray-900">{m.productId?.name || "Deleted Product"}</span>
@@ -470,6 +484,13 @@ const Inventory = () => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            <ReportDownloadModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                title="Export Inventory Report"
+                description="Select date range (Daily, Weekly, Monthly, Yearly, All or Custom) to download inventory records."
+                onGenerate={handleGenerateReport}
+            />
         </div>
     );
 };

@@ -22,11 +22,14 @@ import {
 } from "lucide-react";
 import { accountingApi } from "@/api/accountingApi";
 import { orderApi } from "@/api/orderApi";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
+import { ReportDownloadModal, DateRangeFilter } from "@/components/ui/ReportDownloadModal";
 
 type GSTView = "summary" | "sales" | "purchase" | "itc" | "returns";
 
 const GSTModule = () => {
     const [activeView, setActiveView] = useState<GSTView>("summary");
+    const [showReportModal, setShowReportModal] = useState(false);
     const [month, setMonth] = useState(() => {
         const d = new Date();
         return `${d.toLocaleString('default', { month: 'short' })}-${d.getFullYear()}`;
@@ -65,8 +68,9 @@ const GSTModule = () => {
 
                     return {
                         inv: o._id.substring(0, 8).toUpperCase(),
-                        date: new Date(o.createdAt).toLocaleDateString(),
+                        date: formatDateDDMMYYYY(o.createdAt),
                         customer: o.customer?.name || "Walk-in Customer",
+                        shopName: o.customer?.shopName || "",
                         type: "B2C",
                         taxable: Number(taxable.toFixed(2)),
                         cgst: Number(cgst.toFixed(2)),
@@ -80,7 +84,7 @@ const GSTModule = () => {
                 .filter((p: any) => filterByMonth(p.date || p.billingDate))
                 .map((p: any) => ({
                     po: p.invoiceNo,
-                    date: new Date(p.date || p.billingDate).toLocaleDateString(),
+                    date: formatDateDDMMYYYY(p.date || p.billingDate),
                     vendor: p.supplierName || p.vendorName,
                     gstin: p.gstin || p.vendorGSTIN || "URD",
                     taxable: p.taxableTotal || p.totalTaxable || 0,
@@ -106,21 +110,37 @@ const GSTModule = () => {
         fetchAllData();
     }, [month]);
 
-    const handleExportJSON = async () => {
-        toast.loading(`Drafting GSTR-1 JSON for ${month}...`, { id: "gst-json" });
+    const handleGenerateReport = async ({ startDate, endDate }: DateRangeFilter) => {
+        toast.loading(`Drafting GST Report...`, { id: "gst-json" });
         try {
-            const res = await accountingApi.getGSTR1Json(month);
-            if (res.success && res.data) {
-                const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = `GSTR1_${month}_Offline_Tool.json`;
-                link.click();
-                toast.success("GSTR-1 JSON downloaded successfully!", { id: "gst-json" });
+            let targetSales = salesData;
+            if (startDate || endDate) {
+                targetSales = salesData.filter(s => {
+                    const d = new Date(s.date);
+                    if (isNaN(d.getTime())) return false;
+                    if (startDate && d < startDate) return false;
+                    if (endDate && d > endDate) return false;
+                    return true;
+                });
             }
+
+            const payload = {
+                period: month,
+                generatedAt: new Date().toISOString(),
+                totalB2CInvoices: targetSales.length,
+                records: targetSales
+            };
+
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `GSTR1_Report_${month}.json`;
+            link.click();
+            toast.success(`GST Report downloaded (${targetSales.length} invoices)!`, { id: "gst-json" });
+            setShowReportModal(false);
         } catch (e) {
-            toast.error("JSON generation failed", { id: "gst-json" });
+            toast.error("GST Report generation failed", { id: "gst-json" });
         }
     };
 
@@ -163,6 +183,7 @@ const GSTModule = () => {
 
     return (
         <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <ReportDownloadModal open={showReportModal} onOpenChange={setShowReportModal} onGenerate={handleGenerateReport} />
             {/* Professional Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -183,8 +204,8 @@ const GSTModule = () => {
                             })}
                         </SelectContent>
                     </Select>
-                    <Button variant="outline" onClick={handleExportJSON} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
-                        <Download className="w-4 h-4 text-primary" /> GSTR-1 JSON
+                    <Button onClick={() => setShowReportModal(true)} className="h-11 px-5 rounded-2xl bg-gradient-to-r from-primary to-green-600 text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-primary/20 gap-2">
+                        <FileSpreadsheet className="w-4 h-4" /> GSTR-1 JSON / Report
                     </Button>
                     <Button onClick={() => window.open("https://www.gst.gov.in", "_blank")} className="h-11 px-5 rounded-2xl bg-gradient-to-r from-orange-500 to-accent text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-accent/30 gap-2">
                         <ExternalLink className="w-4 h-4" /> Portals
@@ -324,7 +345,10 @@ const GSTModule = () => {
                                     <tr key={r.inv} className="hover:bg-gray-50/30 transition-colors">
                                         <td className="px-5 py-4 text-xs font-mono font-bold text-teal-600">{r.inv}</td>
                                         <td className="px-5 py-4 text-sm text-gray-600">{r.date}</td>
-                                        <td className="px-5 py-4 text-sm font-bold text-gray-900">{r.customer}</td>
+                                        <td className="px-5 py-4">
+                                            <p className="text-sm font-bold text-gray-900">{r.shopName || "No Shop Name"}</p>
+                                            <p className="text-[11px] font-semibold text-indigo-600 mt-0.5">{r.customer}</p>
+                                        </td>
                                         <td className="px-5 py-4 text-sm">₹{r.taxable.toLocaleString()}</td>
                                         <td className="px-5 py-4 text-xs font-bold text-gray-400">₹{r.cgst}</td>
                                         <td className="px-5 py-4 text-xs font-bold text-gray-400">₹{r.sgst}</td>
@@ -390,7 +414,7 @@ const GSTModule = () => {
                                     <tr key={i} className="hover:bg-gray-50/30 transition-colors">
                                         <td className="px-6 py-4 text-sm font-black text-gray-900">{r.period}</td>
                                         <td className="px-6 py-4"><Badge className="bg-gray-100 text-gray-700 border-0 text-[10px] font-bold">{r.returnType}</Badge></td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">{new Date(r.filedDate).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-600">{formatDateDDMMYYYY(r.filedDate)}</td>
                                         <td className="px-6 py-4 text-xs font-mono font-bold text-teal-600">{r.arnNumber}</td>
                                         <td className="px-6 py-4 text-sm font-black text-gray-900">₹{r.totalLiability?.toLocaleString()}</td>
                                     </tr>
@@ -440,6 +464,13 @@ const GSTModule = () => {
                 </DialogContent>
             </Dialog>
 
+            <ReportDownloadModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                title="Export GSTR-1 Report & JSON"
+                description="Select date range (Daily, Weekly, Monthly, Yearly, All or Custom) to export GST filings."
+                onGenerate={handleGenerateReport}
+            />
         </div>
     );
 };

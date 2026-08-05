@@ -36,7 +36,17 @@ import {
   Trash2,
 } from "lucide-react";
 import { deliveryPartnerApi } from "@/api/deliveryPartnerApi";
+import { orderApi } from "@/api/orderApi";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
 import { toast } from "sonner";
+import {
+  Calendar,
+  Clock,
+  CheckCircle2,
+  DollarSign,
+  FileSpreadsheet,
+  AlertCircle,
+} from "lucide-react";
 
 const DeliveryPartners = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,6 +62,9 @@ const DeliveryPartners = () => {
   const itemsPerPage = 10;
   const queryClient = useQueryClient();
 
+  const [modalTimeframe, setModalTimeframe] = useState<"daily" | "weekly" | "monthly" | "all">("daily");
+  const [modalTab, setModalTab] = useState<"assigned" | "delivered">("assigned");
+
   const handleOpenEditModal = (partner: any) => {
     setEditingPartner(partner);
     setPhoneVal(partner.phone || "");
@@ -65,7 +78,77 @@ const DeliveryPartners = () => {
     queryFn: deliveryPartnerApi.getAllPartners,
   });
 
+  // Fetch all orders for partner delivery calculations
+  const { data: ordersResponse } = useQuery({
+    queryKey: ['allOrdersForPartners'],
+    queryFn: orderApi.getAllOrders,
+  });
+
   const allPartners = partnersResponse?.data || [];
+  const allOrders = ordersResponse?.data || [];
+
+  const isSameDay = (d1: Date, d2: Date) => {
+    return d1.getDate() === d2.getDate() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getFullYear() === d2.getFullYear();
+  };
+
+  const getPartnerStats = (partnerId: string) => {
+    const pOrders = allOrders.filter(o => {
+      const pId = o.deliveryPartner?._id || o.deliveryPartner || o.deliveryPartnerId;
+      return String(pId) === String(partnerId);
+    });
+
+    const now = new Date();
+
+    const assignedOrders = pOrders.filter(o =>
+      !['Delivered', 'Cancelled', 'Returned'].includes(o.orderStatus || o.status)
+    );
+
+    const deliveredOrders = pOrders.filter(o =>
+      (o.orderStatus || o.status) === 'Delivered'
+    );
+
+    const dailyDelivered = deliveredOrders.filter(o => {
+      const d = new Date(o.updatedAt || o.createdAt);
+      return !isNaN(d.getTime()) && isSameDay(d, now);
+    });
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
+    const weeklyDelivered = deliveredOrders.filter(o => {
+      const d = new Date(o.updatedAt || o.createdAt);
+      return !isNaN(d.getTime()) && d >= sevenDaysAgo;
+    });
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(now.getDate() - 30);
+    const monthlyDelivered = deliveredOrders.filter(o => {
+      const d = new Date(o.updatedAt || o.createdAt);
+      return !isNaN(d.getTime()) && d >= thirtyDaysAgo;
+    });
+
+    const cashToCollect = deliveredOrders.reduce((acc, o) => {
+      const isCOD = o.paymentMethod === 'COD' || o.paymentMethod === 'Cash on Delivery';
+      const isPending = o.paymentStatus !== 'Completed' && o.paymentStatus !== 'Settled';
+      if (isCOD && isPending) {
+        const amount = o.codCollectionDetails?.cashAmount ?? o.totalAmount ?? 0;
+        return acc + amount;
+      }
+      return acc;
+    }, 0);
+
+    return {
+      pOrders,
+      assignedOrders,
+      deliveredOrders,
+      dailyDelivered,
+      weeklyDelivered,
+      monthlyDelivered,
+      totalDelivered: deliveredOrders.length,
+      cashToCollect
+    };
+  };
 
   const filteredPartners = useMemo(() => {
     return allPartners.filter((partner) => {
@@ -185,7 +268,7 @@ const DeliveryPartners = () => {
       const isActive = formData.get('isActive') === 'true';
       partnerData.status = status;
       partnerData.isActive = isActive;
-      
+
       updateMutation.mutate({ id: editingPartner._id, data: partnerData });
     } else {
       createMutation.mutate(partnerData);
@@ -276,20 +359,8 @@ const DeliveryPartners = () => {
                 paginatedPartners.map((partner) => (
                   <tr key={partner._id} className="group hover:bg-gray-50/30 transition-colors">
                     <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center font-bold text-primary text-sm border border-primary/10">
-                          {partner.name ? partner.name.charAt(0).toUpperCase() : '?'}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">{partner.name || "Unknown Partner"}</p>
-                          <p className="text-[10px] text-gray-400 font-normal mt-0.5">
-                            {partner.isActive ? (
-                              <span className="text-green-600">● Active</span>
-                            ) : (
-                              <span className="text-gray-400">○ Inactive</span>
-                            )}
-                          </p>
-                        </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{partner.name || "Unknown Partner"}</p>
                       </div>
                     </td>
                     <td className="px-6 py-5">
@@ -337,36 +408,15 @@ const DeliveryPartners = () => {
                       </Badge>
                     </td>
                     <td className="px-6 py-5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedPartner(partner)}
-                          className="h-9 px-4 rounded-xl font-normal text-xs uppercase text-accent hover:bg-accent/5 transition-all"
-                        >
-                          View Details
-                          <ChevronRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenEditModal(partner)}
-                          className="h-9 px-3 rounded-xl font-normal text-xs uppercase text-blue-600 hover:bg-blue-50 transition-all"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setPartnerToDelete(partner);
-                            setShowDeleteModal(true);
-                          }}
-                          className="h-9 px-3 rounded-xl font-normal text-xs uppercase text-red-600 hover:bg-red-50 transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedPartner(partner)}
+                        className="h-9 px-4 rounded-xl font-bold text-xs uppercase text-accent hover:bg-accent/5 transition-all"
+                      >
+                        View Details
+                        <ChevronRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
+                      </Button>
                     </td>
                   </tr>
                 ))
@@ -401,78 +451,192 @@ const DeliveryPartners = () => {
         </div>
       </Card>
 
-      {/* Partner View Modal */}
-      {selectedPartner && (
-        <Dialog open={!!selectedPartner} onOpenChange={() => setSelectedPartner(null)}>
-          <DialogContent className="max-w-xl rounded-[32px] p-0 overflow-hidden border-none shadow-2xl">
-            <div className="bg-primary p-8 text-white relative">
-              <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-                <Truck className="w-32 h-32" />
-              </div>
-              <div className="relative z-10">
-                <Badge className="bg-white/20 text-white border-white/20 mb-3 px-3 py-1 rounded-full font-normal text-[10px] uppercase tracking-wider backdrop-blur-sm">
-                  {selectedPartner.status.toUpperCase()}
-                </Badge>
-                <DialogTitle className="text-3xl font-black tracking-tight">{selectedPartner.name}</DialogTitle>
-                <p className="opacity-70 font-normal mt-1 text-sm">Managing Partner ID: {selectedPartner.id}</p>
-              </div>
-            </div>
+      {/* Comprehensive Partner Detail & Audit Modal */}
+      {selectedPartner && (() => {
+        const stats = getPartnerStats(selectedPartner._id);
+        const getDisplayedDelivered = () => {
+          if (modalTimeframe === "daily") return stats.dailyDelivered;
+          if (modalTimeframe === "weekly") return stats.weeklyDelivered;
+          if (modalTimeframe === "monthly") return stats.monthlyDelivered;
+          return stats.deliveredOrders;
+        };
+        const displayedDeliveredList = getDisplayedDelivered();
 
-            <div className="p-8 space-y-8 bg-white">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-normal text-gray-400 uppercase tracking-widest">Support Email</p>
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-3.5 h-3.5 text-primary" />
-                    <p className="text-sm font-normal text-gray-900">{selectedPartner.email}</p>
-                  </div>
+        return (
+          <Dialog open={!!selectedPartner} onOpenChange={() => setSelectedPartner(null)}>
+            <DialogContent className="max-w-3xl rounded-[36px] p-0 max-h-[90vh] overflow-y-auto custom-scrollbar border-none shadow-2xl bg-white">
+              {/* Header */}
+              <div className="bg-gradient-to-br from-primary via-green-600 to-emerald-700 p-8 text-white relative">
+                <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                  <Truck className="w-40 h-40" />
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-normal text-gray-400 uppercase tracking-widest">Phone Link</p>
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-primary" />
-                    <p className="text-sm font-normal text-gray-900">{selectedPartner.phone}</p>
+                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge className="bg-white/20 text-white border-white/20 px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wider backdrop-blur-sm">
+                        {selectedPartner.status.toUpperCase()}
+                      </Badge>
+                      <Badge className="bg-white/20 text-white border-white/20 px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wider backdrop-blur-sm">
+                        {selectedPartner.vehicleType} — {selectedPartner.vehicleNumber}
+                      </Badge>
+                    </div>
+                    <DialogTitle className="text-3xl font-black tracking-tight">{selectedPartner.name}</DialogTitle>
+                    <p className="opacity-80 font-semibold mt-1 text-xs">
+                      DL: {selectedPartner.licenseNumber || "N/A"} | ID: {selectedPartner._id}
+                    </p>
                   </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h4 className="text-xs font-normal text-gray-400 uppercase tracking-widest ml-1">Fleet Performance</h4>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 text-center">
-                    <p className="text-xl font-normal text-primary">{selectedPartner.rating}</p>
-                    <p className="text-[9px] font-normal text-gray-400 uppercase mt-1">CSAT Score</p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 text-center">
-                    <p className="text-xl font-normal text-primary">{selectedPartner.completedDeliveries}</p>
-                    <p className="text-[9px] font-normal text-gray-400 uppercase mt-1">Completed</p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 text-center">
-                    <p className="text-xl font-normal text-accent">{selectedPartner.currentOrders}</p>
-                    <p className="text-[9px] font-normal text-gray-400 uppercase mt-1">Active Now</p>
+                  <div className="bg-white/15 p-4 rounded-2xl backdrop-blur-md border border-white/20 text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-green-100">COD Cash To Collect</p>
+                    <p className="text-2xl font-black text-white mt-0.5">₹{stats.cashToCollect.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setSelectedPartner(null)}
-                  className="flex-1 h-14 rounded-2xl border-gray-100 font-normal text-xs uppercase text-gray-400 hover:bg-gray-50 transition-all"
-                >
-                  Close Audit
-                </Button>
-                <Button
-                  onClick={() => handleOpenEditModal(selectedPartner)}
-                  className="flex-1 h-14 rounded-2xl bg-primary hover:bg-primary/90 text-white font-normal text-xs uppercase shadow-lg shadow-primary/20 transition-all active:scale-95"
-                >
-                  Update Profile
-                </Button>
+              <div className="p-6 sm:p-8 space-y-6">
+                {/* Timeframe Selector Tabs */}
+                <div className="flex items-center justify-between gap-4 flex-wrap bg-gray-50 p-2 rounded-2xl border border-gray-100">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-2">Timeframe:</span>
+                  <div className="flex gap-1.5">
+                    {([["daily", "Today"], ["weekly", "Last 7 Days"], ["monthly", "Last 30 Days"], ["all", "All Time"]] as const).map(([tf, label]) => (
+                      <button
+                        key={tf}
+                        onClick={() => setModalTimeframe(tf)}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${modalTimeframe === tf ? "bg-white text-primary shadow-sm ring-1 ring-gray-200" : "text-gray-500 hover:text-gray-700"
+                          }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* KPI Metrics */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-4 rounded-2xl bg-green-50/50 border border-green-100 text-center">
+                    <p className="text-2xl font-black text-green-700">{displayedDeliveredList.length}</p>
+                    <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider mt-1">Delivered ({modalTimeframe})</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-100 text-center">
+                    <p className="text-2xl font-black text-amber-700">{stats.assignedOrders.length}</p>
+                    <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mt-1">Active / Assigned</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-red-50/50 border border-red-100 text-center">
+                    <p className="text-2xl font-black text-red-700">₹{stats.cashToCollect.toLocaleString()}</p>
+                    <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider mt-1">Pending Cash</p>
+                  </div>
+                </div>
+
+                {/* Order Breakdown Tabs */}
+                <div className="space-y-4">
+                  <div className="flex gap-2 border-b border-gray-100 pb-3">
+                    <button
+                      onClick={() => setModalTab("assigned")}
+                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${modalTab === "assigned" ? "bg-amber-500 text-white shadow-md shadow-amber-500/20" : "bg-gray-100 text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                      Assigned Orders ({stats.assignedOrders.length})
+                    </button>
+                    <button
+                      onClick={() => setModalTab("delivered")}
+                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${modalTab === "delivered" ? "bg-green-600 text-white shadow-md shadow-green-600/20" : "bg-gray-100 text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                      Delivered Orders ({displayedDeliveredList.length})
+                    </button>
+                  </div>
+
+                  {modalTab === "assigned" && (
+                    <div className="space-y-3">
+                      {stats.assignedOrders.length === 0 ? (
+                        <div className="p-8 text-center bg-gray-50/50 rounded-2xl border border-gray-100 text-gray-400 text-xs font-semibold">
+                          No active orders currently assigned to this partner.
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-100 border border-gray-100 rounded-2xl overflow-hidden">
+                          {stats.assignedOrders.map((ord: any) => (
+                            <div key={ord._id} className="p-4 bg-white hover:bg-amber-50/20 transition-colors flex items-center justify-between gap-4">
+                              <div>
+                                <p className="text-xs font-mono font-bold text-gray-900">#{ord._id.slice(-8).toUpperCase()}</p>
+                                <p className="text-xs font-bold text-gray-700 mt-0.5">{ord.customer?.shopName || ord.customer?.name || "Customer"}</p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">Slot: {ord.deliverySlot || "Standard"} ({formatDateDDMMYYYY(ord.createdAt)})</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-black text-gray-900">₹{ord.totalAmount?.toLocaleString()}</p>
+                                <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold mt-1">
+                                  {ord.orderStatus || ord.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {modalTab === "delivered" && (
+                    <div className="space-y-3">
+                      {displayedDeliveredList.length === 0 ? (
+                        <div className="p-8 text-center bg-gray-50/50 rounded-2xl border border-gray-100 text-gray-400 text-xs font-semibold">
+                          No orders delivered in this timeframe ({modalTimeframe}).
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-100 border border-gray-100 rounded-2xl overflow-hidden">
+                          {displayedDeliveredList.map((ord: any) => (
+                            <div key={ord._id} className="p-4 bg-white hover:bg-green-50/20 transition-colors flex items-center justify-between gap-4">
+                              <div>
+                                <p className="text-xs font-mono font-bold text-gray-900">#{ord._id.slice(-8).toUpperCase()}</p>
+                                <p className="text-xs font-bold text-gray-700 mt-0.5">{ord.customer?.shopName || ord.customer?.name || "Customer"}</p>
+                                <p className="text-[10px] text-green-600 font-bold mt-0.5">
+                                  Delivered: {formatDateDDMMYYYY(ord.updatedAt || ord.createdAt)}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-black text-gray-900">₹{ord.totalAmount?.toLocaleString()}</p>
+                                <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] font-bold mt-1">
+                                  {ord.paymentMethod || "COD"} ({ord.paymentStatus || "Paid"})
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedPartner(null)}
+                    className="flex-1 h-12 rounded-2xl border-gray-200 font-bold text-xs uppercase tracking-widest text-gray-500"
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => handleOpenEditModal(selectedPartner)}
+                    className="flex-1 h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-widest shadow-md flex items-center justify-center gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit Partner
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const p = selectedPartner;
+                      setSelectedPartner(null);
+                      setPartnerToDelete(p);
+                      setShowDeleteModal(true);
+                    }}
+                    className="flex-1 h-12 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-widest shadow-md flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Partner
+                  </Button>
+                </div>
               </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* Add/Edit Partner Modal */}
       <Dialog open={showAddModal} onOpenChange={handleCloseModal}>

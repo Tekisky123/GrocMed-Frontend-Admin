@@ -210,7 +210,7 @@ const Customers = () => {
                       <div className="flex items-center gap-2">
                         <Calendar className="w-3.5 h-3.5 text-gray-400" />
                         <span className="text-xs font-normal text-gray-700">
-                          {format(new Date(customer.createdAt), 'MMM dd, yyyy')}
+                          {format(new Date(customer.createdAt), 'dd/MM/yyyy')}
                         </span>
                       </div>
                     </td>
@@ -433,7 +433,7 @@ const CustomerDetailsModal = ({ customerId, onClose }: { customerId: string; onC
             <div className="flex items-center gap-3">
               <Calendar className="w-4 h-4 text-gray-400" />
               <span className="text-sm font-normal text-gray-700">
-                Joined {format(new Date(customer.createdAt), 'MMMM dd, yyyy')}
+                Joined {format(new Date(customer.createdAt), 'dd/MM/yyyy')}
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -652,7 +652,7 @@ const CustomerDetailsModal = ({ customerId, onClose }: { customerId: string; onC
                       </div>
 
                       <p className="text-[10px] text-gray-400 mt-3">
-                        {format(new Date(order.createdAt), 'MMM dd, yyyy HH:mm')}
+                        {format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm')}
                       </p>
                     </div>
 

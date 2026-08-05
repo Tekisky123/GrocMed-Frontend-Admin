@@ -19,10 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, Plus, Edit2, Loader2, Trash2 } from "lucide-react";
-import { adminApi } from "@/api/adminApi";
+import { adminApi, AdminUser } from "@/api/adminApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
 
 const AdminManagement = () => {
   const queryClient = useQueryClient();
@@ -219,7 +220,7 @@ const AdminManagement = () => {
                       </Badge>
                     </td>
                     <td className="px-6 py-5">
-                      <p className="text-xs font-normal text-gray-900 uppercase tracking-widest">{new Date(user.createdAt).toLocaleDateString()}</p>
+                      <p className="text-xs font-normal text-gray-900 uppercase tracking-widest">{formatDateDDMMYYYY(user.createdAt)}</p>
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-2">

@@ -26,9 +26,13 @@ import { dashboardApi } from "@/api/dashboardApi";
 import { toast } from "sonner";
 import { useState } from "react";
 import { Download } from "lucide-react";
+import { exportToCSV } from "@/utils/exportUtils";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
+import { ReportDownloadModal, DateRangeFilter } from "@/components/ui/ReportDownloadModal";
 
 const Dashboard = () => {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Fetch dashboard stats using React Query
   const { data: dashboardData, isLoading, isError, error } = useQuery({
@@ -39,28 +43,41 @@ const Dashboard = () => {
 
   const stats = dashboardData?.data;
 
-  // Handle report download
-  const handleDownloadReport = async () => {
+  // Handle report download with date range filter
+  const handleGenerateReport = async ({ startDate, endDate }: DateRangeFilter) => {
     try {
       setIsDownloading(true);
-      toast.info('Generating report...', { duration: 2000 });
+      toast.loading('Generating dashboard report...', { id: 'dash-export' });
 
-      const blob = await dashboardApi.downloadSalesReport();
+      let sales = stats?.salesPerformance || [];
+      if (startDate || endDate) {
+        sales = sales.filter((item: any) => {
+          const itemDate = new Date(item.date);
+          if (isNaN(itemDate.getTime())) return false;
+          if (startDate && itemDate < startDate) return false;
+          if (endDate && itemDate > endDate) return false;
+          return true;
+        });
+      }
 
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Sales_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      const csvData = sales.map((item: any) => ({
+        Date: formatDateDDMMYYYY(item.date),
+        "Revenue (₹)": item.revenue || 0,
+        "Orders Count": item.orders || 0,
+      }));
 
-      toast.success('Report downloaded successfully!');
+      // Append Aggregate Summary Row
+      csvData.push({
+        Date: "AGGREGATE METRICS",
+        "Revenue (₹)": stats?.totalRevenue || 0,
+        "Orders Count": stats?.totalOrders || 0,
+      });
+
+      exportToCSV(csvData, `Dashboard_Sales_Report_${new Date().toISOString().split('T')[0]}`);
+      toast.success(`Dashboard sales report downloaded successfully!`, { id: 'dash-export' });
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Failed to download report. Please try again.');
+      toast.error('Failed to download report. Please try again.', { id: 'dash-export' });
     } finally {
       setIsDownloading(false);
     }
@@ -108,7 +125,7 @@ const Dashboard = () => {
           <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">Welcome back! Here's your business overview.</p>
         </div>
         <Button
-          onClick={handleDownloadReport}
+          onClick={() => setShowReportModal(true)}
           disabled={isDownloading}
           className="bg-gradient-to-r from-accent to-orange-500 hover:from-accent/90 hover:to-orange-500/90 text-white font-normal rounded-2xl h-11 px-6 shadow-lg shadow-accent/30 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -240,6 +257,13 @@ const Dashboard = () => {
 
 
       </div>
+      <ReportDownloadModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        title="Export Dashboard Sales Report"
+        description="Select date range (Daily, Weekly, Monthly, Yearly, All or Custom) to download sales metrics."
+        onGenerate={handleGenerateReport}
+      />
     </div>
   );
 };

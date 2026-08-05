@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { accountingApi } from "@/api/accountingApi";
 import { exportToCSV } from "@/utils/exportUtils";
+import { ReportDownloadModal, DateRangeFilter } from "@/components/ui/ReportDownloadModal";
 
 // Helper to get dates from period selection
 const getDatesForPeriod = (period: string) => {
@@ -62,6 +63,7 @@ const Reports = () => {
     const [bsData, setBsData] = useState<any>(null);
     const [cfData, setCfData] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(false);
 
     const fetchReports = async () => {
         setLoading(true);
@@ -100,65 +102,84 @@ const Reports = () => {
         </div>
     );
 
-    const handleExportCSV = () => {
-        toast.loading(`Extracting ${view.toUpperCase()} data...`, { id: "report-csv" });
+    const handleGenerateReport = async ({ startDate, endDate }: DateRangeFilter) => {
+        toast.loading(`Extracting ${view.toUpperCase()} report...`, { id: "report-csv" });
 
-        let dataToExport: any[] = [];
-        const timestamp = new Date().toISOString().split('T')[0];
-        let filename = `Report_${view.toUpperCase()}_${timestamp}`;
+        try {
+            let sDate = startDate ? startDate.toISOString() : getDatesForPeriod(period).startDate;
+            let eDate = endDate ? endDate.toISOString() : getDatesForPeriod(period).endDate;
 
-        if (view === "pl") {
-            dataToExport.push({ Category: "REVENUE AND INCOME", Amount: "" });
-            (pnlData?.income || []).forEach((i: any) => dataToExport.push({ Category: `  ${i.ledger}`, Amount: i.amount }));
-            dataToExport.push({ Category: "TOTAL REVENUE (A)", Amount: totalRevenue });
-            dataToExport.push({ Category: "", Amount: "" });
+            const [pnlRes, tbRes, bsRes, cfRes] = await Promise.all([
+                accountingApi.getPnL(sDate, eDate),
+                accountingApi.getTrialBalance(sDate, eDate),
+                accountingApi.getBalanceSheet(sDate, eDate),
+                accountingApi.getCashFlow(sDate, eDate)
+            ]);
 
-            dataToExport.push({ Category: "COST OF GOODS SOLD", Amount: "" });
-            (pnlData?.cogs || []).forEach((c: any) => dataToExport.push({ Category: `  ${c.ledger}`, Amount: c.amount }));
-            dataToExport.push({ Category: "GROSS PROFIT", Amount: grossProfit });
-            dataToExport.push({ Category: "", Amount: "" });
+            const targetPnl = pnlRes.data || pnlData;
+            const targetBs = bsRes.data || bsData;
+            const targetTb = tbRes.data || tbData;
+            const targetCf = cfRes.data || cfData;
 
-            dataToExport.push({ Category: "OPERATING EXPENSES", Amount: "" });
-            (pnlData?.expenses || []).forEach((e: any) => dataToExport.push({ Category: `  ${e.ledger}`, Amount: e.amount }));
-            dataToExport.push({ Category: "TOTAL EXPENSES (B)", Amount: totalOpex });
-            dataToExport.push({ Category: "", Amount: "" });
+            let dataToExport: any[] = [];
+            const timestamp = new Date().toISOString().split('T')[0];
+            let filename = `Financial_Report_${view.toUpperCase()}_${timestamp}`;
 
-            dataToExport.push({ Category: "NET PROFIT / LOSS", Amount: totalProfit });
+            if (view === "pl") {
+                dataToExport.push({ Category: "REVENUE AND INCOME", Amount: "" });
+                (targetPnl?.income || []).forEach((i: any) => dataToExport.push({ Category: `  ${i.ledger}`, Amount: i.amount }));
+                dataToExport.push({ Category: "TOTAL REVENUE (A)", Amount: targetPnl?.revenueTotal || 0 });
+                dataToExport.push({ Category: "", Amount: "" });
 
-        } else if (view === "balance") {
-            dataToExport.push({ Category: "ASSETS", Amount: "" });
-            (bsData?.assets || []).forEach((a: any) => dataToExport.push({ Category: `  ${a.ledger}`, Amount: a.amount }));
-            dataToExport.push({ Category: "TOTAL ASSETS", Amount: bsData?.totalAssets || 0 });
-            dataToExport.push({ Category: "", Amount: "" });
+                dataToExport.push({ Category: "COST OF GOODS SOLD", Amount: "" });
+                (targetPnl?.cogs || []).forEach((c: any) => dataToExport.push({ Category: `  ${c.ledger}`, Amount: c.amount }));
+                dataToExport.push({ Category: "GROSS PROFIT", Amount: targetPnl?.grossProfit || 0 });
+                dataToExport.push({ Category: "", Amount: "" });
 
-            dataToExport.push({ Category: "LIABILITIES", Amount: "" });
-            (bsData?.liabilities || []).forEach((l: any) => dataToExport.push({ Category: `  ${l.ledger}`, Amount: l.amount }));
-            dataToExport.push({ Category: "", Amount: "" });
+                dataToExport.push({ Category: "OPERATING EXPENSES", Amount: "" });
+                (targetPnl?.expenses || []).forEach((e: any) => dataToExport.push({ Category: `  ${e.ledger}`, Amount: e.amount }));
+                dataToExport.push({ Category: "TOTAL EXPENSES (B)", Amount: targetPnl?.expensesTotal || 0 });
+                dataToExport.push({ Category: "", Amount: "" });
 
-            dataToExport.push({ Category: "EQUITY", Amount: "" });
-            (bsData?.equity || []).forEach((e: any) => dataToExport.push({ Category: `  ${e.ledger}`, Amount: e.amount }));
-            dataToExport.push({ Category: "TOTAL LIABILITIES & EQUITY", Amount: bsData?.totalLiabilitiesAndEquity || 0 });
+                dataToExport.push({ Category: "NET PROFIT / LOSS", Amount: targetPnl?.netProfit || 0 });
 
-        } else if (view === "trial") {
-            dataToExport = (tbData?.records || []).map((l: any) => ({
-                "Account Name": l.ledgerName,
-                "Group": l.group,
-                "Debit Balance": l.debit || 0,
-                "Credit Balance": l.credit || 0
-            }));
-            dataToExport.push({ "Account Name": "TOTALS", Group: "", "Debit Balance": tbData?.totalDebit || 0, "Credit Balance": tbData?.totalCredit || 0 });
+            } else if (view === "balance") {
+                dataToExport.push({ Category: "ASSETS", Amount: "" });
+                (targetBs?.assets || []).forEach((a: any) => dataToExport.push({ Category: `  ${a.ledger}`, Amount: a.amount }));
+                dataToExport.push({ Category: "TOTAL ASSETS", Amount: targetBs?.totalAssets || 0 });
+                dataToExport.push({ Category: "", Amount: "" });
 
-        } else if (view === "cashflow") {
-            dataToExport = [
-                { Activity: "Operating Activities", Amount: cfData?.operatingActivities || 0 },
-                { Activity: "Investing Activities", Amount: cfData?.investingActivities || 0 },
-                { Activity: "Financing Activities", Amount: cfData?.financingActivities || 0 },
-                { Activity: "Net Cash Flow", Amount: cfData?.netCashFlow || 0 }
-            ];
+                dataToExport.push({ Category: "LIABILITIES", Amount: "" });
+                (targetBs?.liabilities || []).forEach((l: any) => dataToExport.push({ Category: `  ${l.ledger}`, Amount: l.amount }));
+                dataToExport.push({ Category: "", Amount: "" });
+
+                dataToExport.push({ Category: "EQUITY", Amount: "" });
+                (targetBs?.equity || []).forEach((e: any) => dataToExport.push({ Category: `  ${e.ledger}`, Amount: e.amount }));
+                dataToExport.push({ Category: "TOTAL LIABILITIES & EQUITY", Amount: targetBs?.totalLiabilitiesAndEquity || 0 });
+
+            } else if (view === "trial") {
+                dataToExport = (targetTb?.records || []).map((l: any) => ({
+                    "Account Name": l.ledgerName,
+                    "Group": l.group,
+                    "Debit Balance": l.debit || 0,
+                    "Credit Balance": l.credit || 0
+                }));
+                dataToExport.push({ "Account Name": "TOTALS", Group: "", "Debit Balance": targetTb?.totalDebit || 0, "Credit Balance": targetTb?.totalCredit || 0 });
+
+            } else if (view === "cashflow") {
+                dataToExport = [
+                    { Activity: "Operating Activities", Amount: targetCf?.operatingActivities || 0 },
+                    { Activity: "Investing Activities", Amount: targetCf?.investingActivities || 0 },
+                    { Activity: "Financing Activities", Amount: targetCf?.financingActivities || 0 },
+                    { Activity: "Net Cash Flow", Amount: targetCf?.netCashFlow || 0 }
+                ];
+            }
+
+            exportToCSV(dataToExport, filename);
+            toast.success("Report CSV exported successfully!", { id: "report-csv" });
+        } catch (e) {
+            toast.error("Failed to generate report CSV", { id: "report-csv" });
         }
-
-        exportToCSV(dataToExport, filename);
-        toast.success("Report CSV ready for download!", { id: "report-csv" });
     };
 
     const tabs: [ReportView, string][] = [
@@ -194,7 +215,7 @@ const Reports = () => {
                             <SelectItem value="q-current">Current Quarter</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Button onClick={handleExportCSV} className="h-11 px-5 rounded-2xl bg-gradient-to-r from-primary to-green-600 text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-primary/30 gap-2">
+                    <Button onClick={() => setShowReportModal(true)} className="h-11 px-5 rounded-2xl bg-gradient-to-r from-primary to-green-600 text-white font-normal text-xs uppercase tracking-widest shadow-lg shadow-primary/30 gap-2">
                         <Download className="w-4 h-4" /> Export CSV
                     </Button>
                 </div>
@@ -505,6 +526,13 @@ const Reports = () => {
                     )}
                 </>
             )}
+            <ReportDownloadModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                title={`Export ${view.toUpperCase()} Report`}
+                description="Select range (Daily, Weekly, Monthly, Yearly, All or Custom) to export financial statements."
+                onGenerate={handleGenerateReport}
+            />
         </div>
     );
 };

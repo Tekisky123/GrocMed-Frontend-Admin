@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatDateDDMMYYYY } from './dateUtils';
 
 export const downloadPurchaseInvoicePDF = (purchase: any) => {
     const doc = new jsPDF();
@@ -49,11 +50,8 @@ export const downloadPurchaseInvoicePDF = (purchase: any) => {
     doc.setFontSize(9);
     doc.setTextColor(textLight[0], textLight[1], textLight[2]);
     const grocmedDetails = [
-        "ZHPL - SS Hyderabad Moosarambagh ES117",
-        "16-2-705/1/1, Old Malakpet, Hyderabad 500036",
-        "GSTIN: 36AAACZ8867B1Z1",
-        "FSSAI: 10020064002537 | PAN: AAACZ8867B",
-        "Place of Supply: Telangana"
+        "GrocMed Private Limited",
+        "Stock Inward Voucher"
     ];
     grocmedDetails.forEach((line) => {
         yPos += 5;
@@ -72,7 +70,7 @@ export const downloadPurchaseInvoicePDF = (purchase: any) => {
     };
 
     addMetaRow("Invoice No:", purchase.invoiceNo || "N/A", yPos);
-    addMetaRow("Date:", new Date(purchase.date).toLocaleDateString() || "N/A", yPos + 6);
+    addMetaRow("Date:", formatDateDDMMYYYY(purchase.date) || "N/A", yPos + 6);
     addMetaRow("Payment Status:", purchase.status || "Unpaid", yPos + 12);
     addMetaRow("Entry Type:", "Stock Inward", yPos + 18);
 

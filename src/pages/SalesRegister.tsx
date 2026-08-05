@@ -20,6 +20,8 @@ import { Download, Eye, Search, Printer, Receipt } from "lucide-react";
 import { orderApi, Order } from "@/api/orderApi";
 import { exportToCSV } from "@/utils/exportUtils";
 import { downloadInvoicePDF } from "@/utils/exportPdfUtils";
+import { formatDateDDMMYYYY } from "@/utils/dateUtils";
+import { ReportDownloadModal, DateRangeFilter } from "@/components/ui/ReportDownloadModal";
 
 const SalesRegister = () => {
     const [search, setSearch] = useState("");
@@ -28,6 +30,7 @@ const SalesRegister = () => {
     const [endDate, setEndDate] = useState("");
     const [showInvoice, setShowInvoice] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+    const [showReportModal, setShowReportModal] = useState(false);
 
     const [invoices, setInvoices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -45,9 +48,10 @@ const SalesRegister = () => {
                 return {
                     id: order._id.substring(order._id.length - 8).toUpperCase(),
                     fullId: order._id,
-                    date: new Date(order.createdAt).toLocaleDateString(),
+                    date: formatDateDDMMYYYY(order.createdAt),
                     rawDate: new Date(order.createdAt),
                     customer: order.customer?.name || "Walk-in Customer",
+                    shopName: order.customer?.shopName || "",
                     gstin: "URD", // Consumer (Unregistered)
                     taxable,
                     cgst: order.cgstAmount || 0,
@@ -75,13 +79,25 @@ const SalesRegister = () => {
         fetchOrders();
     }, []);
 
-    const handleExport = () => {
+    const handleGenerateReport = ({ startDate, endDate }: DateRangeFilter) => {
         toast.loading("Exporting sales register...", { id: "sales-export" });
 
-        const csvData = invoices.map(i => ({
+        let filteredInvoices = invoices;
+        if (startDate || endDate) {
+            filteredInvoices = invoices.filter(i => {
+                const itemDate = i.rawDate;
+                if (!itemDate) return false;
+                if (startDate && itemDate < startDate) return false;
+                if (endDate && itemDate > endDate) return false;
+                return true;
+            });
+        }
+
+        const csvData = filteredInvoices.map(i => ({
             Date: i.date,
             "Invoice No": i.id,
-            Customer: i.customer,
+            "Shop Name": i.shopName || "No Shop Name",
+            "Customer Name": i.customer,
             GSTIN: i.gstin,
             "Taxable Amount": i.taxable,
             CGST: i.cgst,
@@ -92,7 +108,7 @@ const SalesRegister = () => {
         }));
 
         exportToCSV(csvData, "Sales_Register");
-        toast.success("Sales register exported!", { id: "sales-export" });
+        toast.success(`Sales register exported (${csvData.length} records)!`, { id: "sales-export" });
     };
     const handlePrint = () => {
         if (!selectedInvoice) return;
@@ -156,8 +172,8 @@ const SalesRegister = () => {
                     <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">All GST invoices & output tax summary</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" onClick={handleExport} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2">
-                        <Download className="w-4 h-4" /> GSTR-1 Export
+                    <Button variant="outline" onClick={() => setShowReportModal(true)} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
+                        <Download className="w-4 h-4 text-primary" /> GSTR-1 Export
                     </Button>
                 </div>
             </div>
@@ -246,7 +262,10 @@ const SalesRegister = () => {
                                 <tr key={inv.id} className="hover:bg-gray-50/30 transition-colors">
                                     <td className="px-5 py-4 text-xs font-mono font-bold text-primary">{inv.id}</td>
                                     <td className="px-5 py-4 text-sm text-gray-600">{inv.date}</td>
-                                    <td className="px-5 py-4 text-sm font-semibold text-gray-900">{inv.customer}</td>
+                                    <td className="px-5 py-4">
+                                        <p className="text-sm font-bold text-gray-900">{inv.shopName || "No Shop Name"}</p>
+                                        <p className="text-[11px] font-semibold text-indigo-600 mt-0.5">{inv.customer}</p>
+                                    </td>
                                     <td className="px-5 py-4 text-xs font-mono text-gray-400">{inv.gstin}</td>
                                     <td className="px-5 py-4 text-sm text-gray-700">₹{inv.taxable.toLocaleString()}</td>
                                     <td className="px-5 py-4 text-sm text-gray-500">₹{inv.cgst}</td>
@@ -285,13 +304,13 @@ const SalesRegister = () => {
             {/* Invoice Preview Modal */}
             {selectedInvoice && (
                 <Dialog open={showInvoice} onOpenChange={setShowInvoice}>
-                    <DialogContent className="max-w-2xl rounded-[32px] p-0 border-none shadow-2xl overflow-hidden">
+                    <DialogContent className="max-w-2xl rounded-[32px] p-0 border-none shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
                         <div className="bg-gradient-to-br from-primary/10 to-green-600/5 px-8 pt-8 pb-6">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">TAX INVOICE</p>
                                     <h2 className="text-2xl font-black text-gray-900">GrocMed Pvt Ltd</h2>
-                                    <p className="text-xs text-gray-500 mt-1">GSTIN: 27AABCG1234M1Z5 | Mumbai, Maharashtra</p>
+                                    <p className="text-xs text-gray-500 mt-1">Official Tax Invoice</p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-sm font-bold text-gray-900">{selectedInvoice.id}</p>
@@ -303,7 +322,8 @@ const SalesRegister = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Customer Details</p>
-                                    <p className="text-sm font-black text-gray-900">{selectedInvoice.customer}</p>
+                                    <p className="text-sm font-black text-gray-900">{selectedInvoice.shopName || "No Shop Name"}</p>
+                                    <p className="text-xs font-bold text-indigo-600 mt-0.5">{selectedInvoice.customer}</p>
                                     <p className="text-xs text-gray-500 mt-1">Status: {selectedInvoice.gstin || "Unregistered (B2C)"}</p>
                                 </div>
                                 <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
@@ -381,6 +401,13 @@ const SalesRegister = () => {
                     </DialogContent>
                 </Dialog>
             )}
+            <ReportDownloadModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                title="Export Sales Register & GSTR-1"
+                description="Choose date range (Daily, Weekly, Monthly, Yearly, All or Custom) to download sales data."
+                onGenerate={handleGenerateReport}
+            />
         </div>
     );
 };
