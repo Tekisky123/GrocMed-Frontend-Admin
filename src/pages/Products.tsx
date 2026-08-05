@@ -197,13 +197,25 @@ const Products = () => {
     },
   });
 
+  const [statFilter, setStatFilter] = useState<"all" | "active" | "low_stock" | "expiring_soon" | null>(null);
+
   const filteredProducts = useMemo(() => {
     return products.filter((product: any) => {
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = !categoryFilter || product.category === categoryFilter;
-      return matchesSearch && matchesCategory;
+
+      let matchesStat = true;
+      if (statFilter === "active") {
+        matchesStat = !!product.isActive;
+      } else if (statFilter === "low_stock") {
+        matchesStat = product.stock > 0 && product.stock < 10;
+      } else if (statFilter === "expiring_soon") {
+        matchesStat = !!(product.expiryDate && new Date(product.expiryDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
+      }
+
+      return matchesSearch && matchesCategory && matchesStat;
     });
-  }, [searchQuery, categoryFilter, products]);
+  }, [searchQuery, categoryFilter, statFilter, products]);
 
   const paginatedProducts = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -370,32 +382,79 @@ const Products = () => {
         </Button>
       </div>
 
-      {/* Stats Quick View */}
+      {/* Stats Quick View (Clickable Filters) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-green-50/50 via-white to-green-50/30 ring-1 ring-green-100">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-green-600 flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
-            <Package className="w-6 h-6 text-white" />
+        {/* Total Products */}
+        <Card
+          onClick={() => { setStatFilter(null); setCurrentPage(1); }}
+          className={`p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-green-50/50 via-white to-green-50/30 ring-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 ${
+            !statFilter ? "ring-2 ring-primary shadow-primary/20 scale-[1.02]" : "ring-green-100"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-green-600 flex items-center justify-center shadow-lg shadow-primary/20">
+              <Package className="w-6 h-6 text-white" />
+            </div>
+            {!statFilter && (
+              <Badge className="bg-green-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">ACTIVE FILTER</Badge>
+            )}
           </div>
           <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Total Products</p>
           <p className="text-2xl font-black bg-gradient-to-r from-primary to-green-600 bg-clip-text text-transparent">{products.length}</p>
         </Card>
-        <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-blue-50/50 via-white to-blue-50/30 ring-1 ring-blue-100">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-4 shadow-lg shadow-blue-500/20">
-            <TrendingUp className="w-6 h-6 text-white" />
+
+        {/* Active Listing */}
+        <Card
+          onClick={() => { setStatFilter("active"); setCurrentPage(1); }}
+          className={`p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-blue-50/50 via-white to-blue-50/30 ring-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 ${
+            statFilter === "active" ? "ring-2 ring-blue-500 shadow-blue-500/20 scale-[1.02]" : "ring-blue-100"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <TrendingUp className="w-6 h-6 text-white" />
+            </div>
+            {statFilter === "active" && (
+              <Badge className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">ACTIVE FILTER</Badge>
+            )}
           </div>
           <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Active Listing</p>
           <p className="text-2xl font-black bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">{products.filter((p: any) => p.isActive).length}</p>
         </Card>
-        <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-orange-50/50 via-white to-orange-50/30 ring-1 ring-orange-100">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-accent flex items-center justify-center mb-4 shadow-lg shadow-accent/20">
-            <Calculator className="w-6 h-6 text-white" />
+
+        {/* Low Stock */}
+        <Card
+          onClick={() => { setStatFilter("low_stock"); setCurrentPage(1); }}
+          className={`p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-orange-50/50 via-white to-orange-50/30 ring-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 ${
+            statFilter === "low_stock" ? "ring-2 ring-orange-500 shadow-orange-500/20 scale-[1.02]" : "ring-orange-100"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-accent flex items-center justify-center shadow-lg shadow-accent/20">
+              <Calculator className="w-6 h-6 text-white" />
+            </div>
+            {statFilter === "low_stock" && (
+              <Badge className="bg-orange-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">ACTIVE FILTER</Badge>
+            )}
           </div>
           <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Low Stock</p>
           <p className="text-2xl font-black bg-gradient-to-r from-orange-500 to-accent bg-clip-text text-transparent">{products.filter((p: any) => p.stock > 0 && p.stock < 10).length}</p>
         </Card>
-        <Card className="p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-red-50/50 via-white to-red-50/30 ring-1 ring-red-100">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center mb-4 shadow-lg shadow-red-500/20">
-            <Calendar className="w-6 h-6 text-white" />
+
+        {/* Expiring Soon */}
+        <Card
+          onClick={() => { setStatFilter("expiring_soon"); setCurrentPage(1); }}
+          className={`p-6 border-none shadow-2xl rounded-[32px] bg-gradient-to-br from-red-50/50 via-white to-red-50/30 ring-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 ${
+            statFilter === "expiring_soon" ? "ring-2 ring-red-500 shadow-red-500/20 scale-[1.02]" : "ring-red-100"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/20">
+              <Calendar className="w-6 h-6 text-white" />
+            </div>
+            {statFilter === "expiring_soon" && (
+              <Badge className="bg-red-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">ACTIVE FILTER</Badge>
+            )}
           </div>
           <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest mb-1">Expiring Soon</p>
           <p className="text-2xl font-black bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">{products.filter((p: any) => p.expiryDate && new Date(p.expiryDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)).length}</p>
