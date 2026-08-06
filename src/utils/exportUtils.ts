@@ -3,34 +3,40 @@ export const exportToCSV = (data: any[], filename: string) => {
         return;
     }
 
-    const headers = Object.keys(data[0]);
+    try {
+        const headers = Object.keys(data[0]);
 
-    // Convert object array to CSV string
-    const csvContent = [
-        headers.join(','),
-        ...data.map(row =>
-            headers.map(header => {
+        // Convert object array to CSV string efficiently
+        const csvRows = [headers.join(',')];
+
+        for (let i = 0; i < data.length; i++) {
+            const row = data[i];
+            const values = headers.map(header => {
                 let cell = row[header] === null || row[header] === undefined ? '' : row[header];
-                // Escape quotes and commas
-                cell = cell.toString().replace(/"/g, '""');
-                if (cell.search(/("|,|\n)/g) >= 0) {
-                    cell = `"${cell}"`;
-                }
-                return cell;
-            }).join(',')
-        )
-    ].join('\n');
+                const str = String(cell).replace(/"/g, '""');
+                return str.includes(',') || str.includes('\n') || str.includes('"') ? `"${str}"` : str;
+            });
+            csvRows.push(values.join(','));
+        }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-
-    if (link.download !== undefined) {
+        const csvContent = csvRows.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+
         link.setAttribute('href', url);
-        link.setAttribute('download', `${filename}.csv`);
-        link.style.visibility = 'hidden';
+        link.setAttribute('download', `${filename.replace(/\s+/g, '_')}.csv`);
+        link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+
+        setTimeout(() => {
+            if (document.body.contains(link)) {
+                document.body.removeChild(link);
+            }
+            URL.revokeObjectURL(url);
+        }, 200);
+    } catch (e) {
+        console.error("Export CSV error:", e);
     }
 };

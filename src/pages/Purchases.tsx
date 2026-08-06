@@ -425,28 +425,36 @@ const Purchases = () => {
     const handleGenerateReport = ({ startDate, endDate }: DateRangeFilter) => {
         toast.loading("Exporting purchase register...", { id: "pur-export" });
 
-        let filtered = purchases;
-        if (startDate || endDate) {
-            filtered = purchases.filter(p => {
-                const itemDate = new Date(p.date);
-                if (isNaN(itemDate.getTime())) return false;
-                if (startDate && itemDate < startDate) return false;
-                if (endDate && itemDate > endDate) return false;
-                return true;
-            });
-        }
+        setTimeout(() => {
+            try {
+                let filtered = purchases;
+                if (startDate || endDate) {
+                    filtered = purchases.filter(p => {
+                        const itemDate = new Date(p.date);
+                        if (isNaN(itemDate.getTime())) return false;
+                        if (startDate && itemDate < startDate) return false;
+                        if (endDate && itemDate > endDate) return false;
+                        return true;
+                    });
+                }
 
-        const csvData = filtered.map(p => ({
-            Date: formatDateDDMMYYYY(p.date),
-            "Invoice No": p.invoiceNo,
-            Vendor: p.supplierName,
-            GSTIN: p.gstin,
-            "Taxable Total": p.taxableTotal,
-            "Grand Total": p.totalAmount,
-            Status: p.status
-        }));
-        exportToCSV(csvData, "Purchase_Register");
-        toast.success(`Purchase register exported (${csvData.length} records)!`, { id: "pur-export" });
+                const csvData = filtered.map(p => ({
+                    Date: formatDateDDMMYYYY(p.date),
+                    "Invoice No": p.invoiceNo,
+                    Vendor: p.supplierName || "N/A",
+                    GSTIN: p.gstin || "URD",
+                    "Taxable Total": p.taxableTotal || 0,
+                    "Grand Total": p.totalAmount || 0,
+                    Status: p.status || "Completed"
+                }));
+
+                exportToCSV(csvData, "Purchase_Register");
+                toast.success(`Purchase register exported (${csvData.length} records)!`, { id: "pur-export" });
+            } catch (err) {
+                console.error("Export error:", err);
+                toast.error("Failed to export report", { id: "pur-export" });
+            }
+        }, 50);
     };
 
     const getStatusBadge = (status: string) => {
@@ -901,7 +909,7 @@ const Purchases = () => {
             </Dialog>
 
             {/* View Purchase Details Modal */}
-            <Dialog open={showViewModal} onOpenChange={setShowViewModal}>
+            <Dialog open={!!viewPurchase} onOpenChange={(open) => { if (!open) setViewPurchase(null); }}>
                 <DialogContent className="max-w-[95vw] lg:max-w-4xl w-full rounded-[40px] p-0 border-none shadow-3xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-white ring-1 ring-black/5 animate-in zoom-in-95 duration-300">
                     {viewPurchase && (
                         <div className="flex h-full flex-col max-h-[90vh] w-full min-w-0 overflow-hidden">
