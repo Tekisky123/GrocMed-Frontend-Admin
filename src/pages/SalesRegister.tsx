@@ -16,9 +16,10 @@ import {
     DialogContent,
     DialogHeader,
 } from "@/components/ui/dialog";
-import { Download, Eye, Search, Printer, Receipt } from "lucide-react";
+import { Download, Eye, Search, Printer, Receipt, FileSpreadsheet } from "lucide-react";
 import { orderApi, Order } from "@/api/orderApi";
-import { exportToCSV } from "@/utils/exportUtils";
+import { dashboardApi } from "@/api/dashboardApi";
+import { exportToCSV, exportToExcel } from "@/utils/exportUtils";
 import { downloadInvoicePDF } from "@/utils/exportPdfUtils";
 import { formatDateDDMMYYYY } from "@/utils/dateUtils";
 import { ReportDownloadModal, DateRangeFilter } from "@/components/ui/ReportDownloadModal";
@@ -62,8 +63,8 @@ const SalesRegister = () => {
                     method: order.paymentMethod,
                     status: order.paymentStatus === "Completed" ? "Paid" : "Pending",
                     orderStatus: order.orderStatus,
-                    items: order.items.reduce((acc, item) => acc + item.quantity, 0),
-                    products: order.items
+                    items: order.items ? order.items.reduce((acc, item) => acc + item.quantity, 0) : 0,
+                    products: order.items || []
                 };
             });
             setInvoices(mapped);
@@ -79,36 +80,59 @@ const SalesRegister = () => {
         fetchOrders();
     }, []);
 
-    const handleGenerateReport = ({ startDate, endDate }: DateRangeFilter) => {
-        toast.loading("Exporting sales register...", { id: "sales-export" });
-
-        let filteredInvoices = invoices;
-        if (startDate || endDate) {
-            filteredInvoices = invoices.filter(i => {
-                const itemDate = i.rawDate;
-                if (!itemDate) return false;
-                if (startDate && itemDate < startDate) return false;
-                if (endDate && itemDate > endDate) return false;
-                return true;
-            });
+    const handleDownloadExcelReport = async () => {
+        toast.loading("Generating full sales report Excel...", { id: "sales-excel" });
+        try {
+            const blobData = await dashboardApi.downloadSalesReport(startDate || undefined, endDate || undefined);
+            const filename = `Sales_Report_${new Date().toISOString().split('T')[0]}`;
+            exportToExcel(blobData, filename);
+            toast.success("Excel Sales Report downloaded successfully!", { id: "sales-excel" });
+        } catch (error) {
+            console.error("Excel report download error:", error);
+            toast.error("Failed to download Excel sales report", { id: "sales-excel" });
         }
+    };
 
-        const csvData = filteredInvoices.map(i => ({
-            Date: i.date,
-            "Invoice No": i.id,
-            "Shop Name": i.shopName || "No Shop Name",
-            "Customer Name": i.customer,
-            GSTIN: i.gstin,
-            "Taxable Amount": i.taxable,
-            CGST: i.cgst,
-            SGST: i.sgst,
-            IGST: i.igst,
-            Total: i.total,
-            Status: i.status
-        }));
+    const handleGenerateReport = async ({ startDate: rStart, endDate: rEnd }: DateRangeFilter) => {
+        toast.loading("Generating sales report...", { id: "sales-export" });
+        try {
+            const sStr = rStart ? rStart.toISOString() : undefined;
+            const eStr = rEnd ? rEnd.toISOString() : undefined;
 
-        exportToCSV(csvData, "Sales_Register");
-        toast.success(`Sales register exported (${csvData.length} records)!`, { id: "sales-export" });
+            const blobData = await dashboardApi.downloadSalesReport(sStr, eStr);
+            const filename = `Sales_Report_${new Date().toISOString().split('T')[0]}`;
+            exportToExcel(blobData, filename);
+            toast.success("Sales report downloaded successfully!", { id: "sales-export" });
+        } catch (error) {
+            console.error("Excel download error, exporting CSV fallback:", error);
+            let filteredInvoices = invoices;
+            if (rStart || rEnd) {
+                filteredInvoices = invoices.filter(i => {
+                    const itemDate = i.rawDate;
+                    if (!itemDate || isNaN(itemDate.getTime())) return false;
+                    if (rStart && itemDate < rStart) return false;
+                    if (rEnd && itemDate > rEnd) return false;
+                    return true;
+                });
+            }
+
+            const csvData = filteredInvoices.map(i => ({
+                Date: i.date,
+                "Invoice No": i.id,
+                "Shop Name": i.shopName || "No Shop Name",
+                "Customer Name": i.customer,
+                GSTIN: i.gstin,
+                "Taxable Amount": i.taxable,
+                CGST: i.cgst,
+                SGST: i.sgst,
+                IGST: i.igst,
+                Total: i.total,
+                Status: i.status
+            }));
+
+            exportToCSV(csvData, "Sales_Register");
+            toast.success(`Sales register CSV exported (${csvData.length} records)!`, { id: "sales-export" });
+        }
     };
     const handlePrint = () => {
         if (!selectedInvoice) return;
@@ -172,8 +196,11 @@ const SalesRegister = () => {
                     <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">All GST invoices & output tax summary</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" onClick={() => setShowReportModal(true)} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
-                        <Download className="w-4 h-4 text-primary" /> GSTR-1 Export
+                    <Button variant="outline" onClick={handleDownloadExcelReport} className="h-11 px-5 rounded-2xl border-gray-200 font-normal text-xs uppercase tracking-widest gap-2 bg-white">
+                        <FileSpreadsheet className="w-4 h-4 text-primary" /> Excel Sales Report
+                    </Button>
+                    <Button onClick={() => setShowReportModal(true)} className="h-11 px-5 rounded-2xl bg-gradient-to-r from-primary to-green-600 text-white font-normal text-xs uppercase tracking-widest gap-2 shadow-lg shadow-primary/20">
+                        <Download className="w-4 h-4" /> GSTR-1 Export
                     </Button>
                 </div>
             </div>

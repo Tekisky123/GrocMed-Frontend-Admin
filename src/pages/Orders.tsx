@@ -188,9 +188,9 @@ const Orders = () => {
   const handleGenerateReport = ({ startDate, endDate }: DateRangeFilter) => {
     toast.loading("Exporting orders...", { id: "orders-export" });
 
-    let targetOrders = orders;
+    let targetOrders = allOrders;
     if (startDate || endDate) {
-      targetOrders = orders.filter(o => {
+      targetOrders = allOrders.filter((o: Order) => {
         const itemDate = new Date(o.createdAt);
         if (isNaN(itemDate.getTime())) return false;
         if (startDate && itemDate < startDate) return false;

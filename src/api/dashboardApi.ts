@@ -8,8 +8,13 @@ export const dashboardApi = {
     },
 
     // Download sales report
-    downloadSalesReport: async () => {
-        const response = await axiosInstance.get("/api/admin/report/sales", {
+    downloadSalesReport: async (startDate?: string, endDate?: string) => {
+        const params = new URLSearchParams();
+        if (startDate) params.append('startDate', startDate);
+        if (endDate) params.append('endDate', endDate);
+
+        const queryString = params.toString();
+        const response = await axiosInstance.get(`/api/admin/report/sales${queryString ? `?${queryString}` : ''}`, {
             responseType: 'blob', // Important for binary data
         });
         return response.data;

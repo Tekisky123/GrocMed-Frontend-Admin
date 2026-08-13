@@ -26,7 +26,7 @@ import { dashboardApi } from "@/api/dashboardApi";
 import { toast } from "sonner";
 import { useState } from "react";
 import { Download } from "lucide-react";
-import { exportToCSV } from "@/utils/exportUtils";
+import { exportToCSV, exportToExcel } from "@/utils/exportUtils";
 import { formatDateDDMMYYYY } from "@/utils/dateUtils";
 import { ReportDownloadModal, DateRangeFilter } from "@/components/ui/ReportDownloadModal";
 
@@ -47,37 +47,48 @@ const Dashboard = () => {
   const handleGenerateReport = async ({ startDate, endDate }: DateRangeFilter) => {
     try {
       setIsDownloading(true);
-      toast.loading('Generating dashboard report...', { id: 'dash-export' });
+      toast.loading('Generating sales report...', { id: 'dash-export' });
 
-      let sales = stats?.salesPerformance || [];
-      if (startDate || endDate) {
-        sales = sales.filter((item: any) => {
-          const itemDate = new Date(item.date);
-          if (isNaN(itemDate.getTime())) return false;
-          if (startDate && itemDate < startDate) return false;
-          if (endDate && itemDate > endDate) return false;
-          return true;
-        });
-      }
+      const sDateStr = startDate ? startDate.toISOString() : undefined;
+      const eDateStr = endDate ? endDate.toISOString() : undefined;
 
-      const csvData = sales.map((item: any) => ({
-        Date: formatDateDDMMYYYY(item.date),
-        "Revenue (₹)": item.revenue || 0,
-        "Orders Count": item.orders || 0,
-      }));
+      const blobData = await dashboardApi.downloadSalesReport(sDateStr, eDateStr);
+      const filename = `Sales_Report_${new Date().toISOString().split('T')[0]}`;
+      exportToExcel(blobData, filename);
 
-      // Append Aggregate Summary Row
-      csvData.push({
-        Date: "AGGREGATE METRICS",
-        "Revenue (₹)": stats?.totalRevenue || 0,
-        "Orders Count": stats?.totalOrders || 0,
-      });
-
-      exportToCSV(csvData, `Dashboard_Sales_Report_${new Date().toISOString().split('T')[0]}`);
-      toast.success(`Dashboard sales report downloaded successfully!`, { id: 'dash-export' });
+      toast.success('Comprehensive Sales report downloaded successfully!', { id: 'dash-export' });
     } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Failed to download report. Please try again.', { id: 'dash-export' });
+      console.error('Download error, falling back to CSV export:', error);
+      // Fallback CSV export
+      try {
+        let sales = stats?.salesPerformance || [];
+        if (startDate || endDate) {
+          sales = sales.filter((item: any) => {
+            const itemDate = new Date(item.date);
+            if (isNaN(itemDate.getTime())) return false;
+            if (startDate && itemDate < startDate) return false;
+            if (endDate && itemDate > endDate) return false;
+            return true;
+          });
+        }
+
+        const csvData = sales.map((item: any) => ({
+          Date: formatDateDDMMYYYY(item.date),
+          "Revenue (₹)": item.revenue || 0,
+          "Orders Count": item.orders || 0,
+        }));
+
+        csvData.push({
+          Date: "AGGREGATE METRICS",
+          "Revenue (₹)": stats?.totalRevenue || 0,
+          "Orders Count": stats?.totalOrders || 0,
+        });
+
+        exportToCSV(csvData, `Dashboard_Sales_Report_${new Date().toISOString().split('T')[0]}`);
+        toast.success(`Sales report exported as CSV!`, { id: 'dash-export' });
+      } catch (fallbackErr) {
+        toast.error('Failed to download report. Please try again.', { id: 'dash-export' });
+      }
     } finally {
       setIsDownloading(false);
     }

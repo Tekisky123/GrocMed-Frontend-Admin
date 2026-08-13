@@ -40,3 +40,28 @@ export const exportToCSV = (data: any[], filename: string) => {
         console.error("Export CSV error:", e);
     }
 };
+
+export const exportToExcel = (blobData: Blob, filename: string) => {
+    try {
+        const blob = blobData instanceof Blob 
+            ? blobData 
+            : new Blob([blobData], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${filename.replace(/\s+/g, '_')}.xlsx`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+
+        setTimeout(() => {
+            if (document.body.contains(link)) {
+                document.body.removeChild(link);
+            }
+            window.URL.revokeObjectURL(url);
+        }, 200);
+    } catch (e) {
+        console.error("Export Excel error:", e);
+    }
+};

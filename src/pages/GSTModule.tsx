@@ -183,7 +183,7 @@ const GSTModule = () => {
 
     return (
         <div className="space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <ReportDownloadModal open={showReportModal} onOpenChange={setShowReportModal} onGenerate={handleGenerateReport} />
+            <ReportDownloadModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} onGenerate={handleGenerateReport} />
             {/* Professional Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
