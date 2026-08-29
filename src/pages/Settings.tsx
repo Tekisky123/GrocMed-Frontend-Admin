@@ -27,7 +27,23 @@ const Settings = () => {
     maxOrdersPerSlot: 20,
     paymentQrUrl: null as string | null,
   });
-  
+
+  const [storeTimings, setStoreTimings] = useState<any>({
+    isEmergencyClosed: false,
+    closureReason: 'Store is temporarily closed for maintenance',
+    weeklyHours: {
+      monday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+      tuesday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+      wednesday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+      thursday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+      friday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+      saturday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+      sunday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+    }
+  });
+
+  const [storeStatus, setStoreStatus] = useState<any>(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [qrUploading, setQrUploading] = useState(false);
@@ -62,6 +78,16 @@ const Settings = () => {
           maxOrdersPerSlot: res.data.maxOrdersPerSlot || 20,
           paymentQrUrl: res.data.paymentQrUrl || null,
         });
+        if (res.data.storeTimings) {
+          setStoreTimings({
+            isEmergencyClosed: !!res.data.storeTimings.isEmergencyClosed,
+            closureReason: res.data.storeTimings.closureReason || 'Store is temporarily closed for maintenance',
+            weeklyHours: res.data.storeTimings.weeklyHours || {}
+          });
+        }
+        if (res.data.storeStatus) {
+          setStoreStatus(res.data.storeStatus);
+        }
       }
     } catch (e) {
       toast.error('Failed to load settings');
@@ -123,9 +149,10 @@ const Settings = () => {
         freeDeliveryThreshold: settings.freeDeliveryThreshold,
         maxOrdersPerDay: settings.maxOrdersPerDay,
         maxOrdersPerSlot: settings.maxOrdersPerSlot,
+        storeTimings: storeTimings,
       });
       if (res.success) {
-        toast.success('Settings updated successfully!');
+        toast.success('Settings & Store Operating Hours updated successfully!');
         setSettings(prev => ({
           ...prev,
           deliveryCharge: res.data.deliveryCharge,
@@ -134,6 +161,16 @@ const Settings = () => {
           maxOrdersPerDay: res.data.maxOrdersPerDay,
           maxOrdersPerSlot: res.data.maxOrdersPerSlot,
         }));
+        if (res.data.storeTimings) {
+          setStoreTimings({
+            isEmergencyClosed: !!res.data.storeTimings.isEmergencyClosed,
+            closureReason: res.data.storeTimings.closureReason || 'Store is temporarily closed for maintenance',
+            weeklyHours: res.data.storeTimings.weeklyHours || {}
+          });
+        }
+        if (res.data.storeStatus) {
+          setStoreStatus(res.data.storeStatus);
+        }
       }
     } catch (e) {
       toast.error('Failed to update Settings');
@@ -387,6 +424,7 @@ const Settings = () => {
       <Tabs defaultValue="general" className="space-y-8">
         <TabsList className="bg-gray-100/50 p-1 rounded-2xl h-14 border border-gray-100">
           <TabsTrigger value="general" className="rounded-xl px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all h-full">General Settings</TabsTrigger>
+          <TabsTrigger value="timings" className="rounded-xl px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all h-full">Store Operating Hours</TabsTrigger>
           <TabsTrigger value="slots" className="rounded-xl px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all h-full">Delivery Slots</TabsTrigger>
         </TabsList>
 
@@ -670,6 +708,230 @@ const Settings = () => {
             </div>
           </Card>
 
+        </TabsContent>
+
+        {/* ─── Store Operating Hours Tab ─── */}
+        <TabsContent value="timings" className="space-y-8 mt-0 focus-visible:ring-0">
+          {/* Live Calculated Status Banner */}
+          <Card className="p-6 sm:p-8 border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100 space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-2xl ${storeStatus?.isOpen ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                  <Clock className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-lg font-black text-gray-900 tracking-tight">Live Store Availability Status</h3>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                      storeStatus?.isOpen ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {storeStatus?.isOpen ? 'STORE IS OPEN' : storeStatus?.isEmergencyClosed ? 'STORE PAUSED (EMERGENCY)' : 'STORE CLOSED'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 font-normal mt-1">
+                    {storeStatus?.statusMessage || 'Calculating current status...'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={fetchSettings}
+                className="h-10 px-4 rounded-xl text-xs font-bold uppercase tracking-widest text-gray-500 hover:bg-gray-50"
+              >
+                Refresh Status
+              </Button>
+            </div>
+
+            {/* Master Emergency Pause Switch */}
+            <div className="p-6 bg-red-50/40 rounded-3xl border border-red-100 space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-red-100 text-red-600 rounded-2xl">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-gray-900 tracking-tight">Emergency Store Pause Switch</h4>
+                    <p className="text-xs text-gray-500 font-normal">
+                      Immediately close store & block customer orders regardless of scheduled weekly operating hours.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${
+                    storeTimings.isEmergencyClosed ? 'text-red-600' : 'text-gray-400'
+                  }`}>
+                    {storeTimings.isEmergencyClosed ? 'PAUSED / CLOSED' : 'ACTIVE / OPEN'}
+                  </span>
+                  <Switch
+                    checked={storeTimings.isEmergencyClosed}
+                    onCheckedChange={(val) => setStoreTimings((prev: any) => ({
+                      ...prev,
+                      isEmergencyClosed: val
+                    }))}
+                  />
+                </div>
+              </div>
+
+              {storeTimings.isEmergencyClosed && (
+                <div className="space-y-2 pt-2 border-t border-red-100">
+                  <Label className="text-xs font-normal text-red-600 uppercase tracking-widest ml-1">
+                    Closure Reason (Displayed on Customer App Banner)
+                  </Label>
+                  <Input
+                    value={storeTimings.closureReason || ''}
+                    onChange={(e) => setStoreTimings((prev: any) => ({
+                      ...prev,
+                      closureReason: e.target.value
+                    }))}
+                    placeholder="e.g. Closed temporarily for maintenance / restocking"
+                    className="h-12 rounded-2xl bg-white border-red-200 focus:border-red-400 text-sm font-normal"
+                  />
+                </div>
+              )}
+            </div>
+          </Card>
+
+          {/* Weekly Operating Hours Schedule Card */}
+          <Card className="p-6 sm:p-8 border-none shadow-sm rounded-3xl bg-white ring-1 ring-gray-100 space-y-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 tracking-tight">Weekly Store Schedule</h3>
+                  <p className="text-xs text-gray-500 font-normal mt-0.5">
+                    Google Business style weekly store opening and closing hours for each day.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setStoreTimings((prev: any) => ({
+                    ...prev,
+                    weeklyHours: {
+                      monday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+                      tuesday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+                      wednesday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+                      thursday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+                      friday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+                      saturday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+                      sunday: { isClosed: false, openTime: '08:00', closeTime: '22:00' },
+                    }
+                  }));
+                  toast.info("Applied default 08:00 AM - 10:00 PM schedule for all days");
+                }}
+                className="h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                Set All Days (08:00 AM - 10:00 PM)
+              </Button>
+            </div>
+
+            {/* Day by Day List */}
+            <div className="space-y-4">
+              {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((dayKey) => {
+                const dayConfig = storeTimings.weeklyHours?.[dayKey] || { isClosed: false, openTime: '08:00', closeTime: '22:00' };
+                const dayLabel = dayKey.charAt(0).toUpperCase() + dayKey.slice(1);
+
+                return (
+                  <div key={dayKey} className="p-4 sm:p-5 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-[160px]">
+                      <Switch
+                        checked={!dayConfig.isClosed}
+                        onCheckedChange={(open) => {
+                          setStoreTimings((prev: any) => ({
+                            ...prev,
+                            weeklyHours: {
+                              ...prev.weeklyHours,
+                              [dayKey]: {
+                                ...dayConfig,
+                                isClosed: !open
+                              }
+                            }
+                          }));
+                        }}
+                      />
+                      <div>
+                        <span className="font-black text-gray-900 text-sm">{dayLabel}</span>
+                        <span className={`block text-[10px] font-bold uppercase tracking-widest ${
+                          dayConfig.isClosed ? 'text-red-500' : 'text-green-600'
+                        }`}>
+                          {dayConfig.isClosed ? 'Closed All Day' : 'Open'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {!dayConfig.isClosed ? (
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase tracking-widest text-gray-400 ml-1">Opening Time</Label>
+                          <Input
+                            type="time"
+                            value={dayConfig.openTime || '08:00'}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setStoreTimings((prev: any) => ({
+                                ...prev,
+                                weeklyHours: {
+                                  ...prev.weeklyHours,
+                                  [dayKey]: {
+                                    ...dayConfig,
+                                    openTime: val
+                                  }
+                                }
+                              }));
+                            }}
+                            className="h-10 w-36 rounded-xl bg-white border-gray-200 font-semibold text-xs text-gray-800"
+                          />
+                        </div>
+                        <span className="text-gray-400 text-xs font-bold pt-4">to</span>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] uppercase tracking-widest text-gray-400 ml-1">Closing Time</Label>
+                          <Input
+                            type="time"
+                            value={dayConfig.closeTime || '22:00'}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setStoreTimings((prev: any) => ({
+                                ...prev,
+                                weeklyHours: {
+                                  ...prev.weeklyHours,
+                                  [dayKey]: {
+                                    ...dayConfig,
+                                    closeTime: val
+                                  }
+                                }
+                              }));
+                            }}
+                            className="h-10 w-36 rounded-xl bg-white border-gray-200 font-semibold text-xs text-gray-800"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 font-bold uppercase tracking-widest italic py-2">
+                        Store is Closed on {dayLabel}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-4 flex gap-3 border-t border-gray-100">
+              <Button
+                onClick={saveSettings}
+                disabled={saving}
+                className="h-14 px-10 rounded-2xl bg-accent text-white font-normal uppercase text-xs tracking-widest shadow-lg shadow-accent/20 hover:bg-accent/90 transition-all active:scale-95"
+              >
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Save Operating Hours & Timings
+              </Button>
+            </div>
+          </Card>
         </TabsContent>
 
         {/* ─── Delivery Slots Tab ─── */}

@@ -24,6 +24,7 @@ import CustomNotifications from "./pages/CustomNotifications";
 import AdminManagement from "./pages/AdminManagement";
 import Settings from "./pages/Settings";
 import Banners from "./pages/Banners";
+import Coupons from "./pages/Coupons";
 import NotFound from "./pages/NotFound";
 
 // Accounting & Finance Pages
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/admin-management" element={makeProtected(AdminManagement, "super_admin")} />
             <Route path="/settings" element={makeProtected(Settings, "super_admin")} />
             <Route path="/banners" element={makeProtected(Banners, "super_admin")} />
+            <Route path="/coupons" element={makeProtected(Coupons)} />
 
             {/* Accounting & Finance routes */}
             <Route path="/finance" element={makeProtected(Finance, "super_admin")} />

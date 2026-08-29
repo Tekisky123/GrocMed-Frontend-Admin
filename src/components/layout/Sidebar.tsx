@@ -23,6 +23,7 @@ import {
   MonitorPlay,
   Clock,
   Tags,
+  Ticket,
 } from "lucide-react";
 import logo from "@/assets/logo-removebg-preview.png";
 
@@ -40,6 +41,7 @@ const navItems: NavItem[] = [
   { type: "link", label: "Orders", icon: ShoppingCart, href: "/orders" },
   { type: "link", label: "Products", icon: Package, href: "/products" },
   { type: "link", label: "Brands & Categories", icon: Tags, href: "/brands-categories" },
+  { type: "link", label: "Coupons", icon: Ticket, href: "/coupons" },
   { type: "link", label: "Customers", icon: Users, href: "/customers" },
   { type: "link", label: "Delivery Partners", icon: Truck, href: "/delivery-partners" },
   { type: "link", label: "Notifications", icon: Bell, href: "/notifications" },

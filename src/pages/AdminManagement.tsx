@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search, Plus, Edit2, Loader2, Trash2 } from "lucide-react";
-import { adminApi, AdminUser } from "@/api/adminApi";
+import { adminApi } from "@/api/adminApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";

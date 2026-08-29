@@ -59,6 +59,8 @@ export interface Order {
         _id: string;
     }>;
     totalAmount: number;
+    couponCode?: string;
+    discountAmount?: number;
     taxAmount?: number;
     cgstAmount?: number;
     sgstAmount?: number;

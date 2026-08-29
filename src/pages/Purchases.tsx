@@ -569,7 +569,6 @@ const Purchases = () => {
                                                         size="icon" 
                                                         onClick={() => {
                                                             setViewPurchase(p);
-                                                            setShowViewModal(true);
                                                         }}
                                                         className="h-8 w-8 rounded-xl hover:bg-blue-50 hover:text-blue-600 text-gray-400 transition-all"
                                                     >
@@ -970,7 +969,7 @@ const Purchases = () => {
                             </ScrollArea>
 
                             <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex justify-end">
-                                <Button onClick={() => setShowViewModal(false)} variant="outline" className="px-6 rounded-xl font-bold uppercase tracking-wider">Close</Button>
+                                <Button onClick={() => setViewPurchase(null)} variant="outline" className="px-6 rounded-xl font-bold uppercase tracking-wider">Close</Button>
                             </div>
                         </div>
                     )}

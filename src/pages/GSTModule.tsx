@@ -18,7 +18,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import {
-    CheckCircle2, AlertCircle, Download, ExternalLink, FileCheck, Receipt, BarChart3, History, ArrowRightLeft, ShieldCheck, Scale, Info
+    CheckCircle2, AlertCircle, Download, ExternalLink, FileCheck, Receipt, BarChart3, History, ArrowRightLeft, ShieldCheck, Scale, Info, FileSpreadsheet
 } from "lucide-react";
 import { accountingApi } from "@/api/accountingApi";
 import { orderApi } from "@/api/orderApi";
