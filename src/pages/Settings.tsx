@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Zap, Globe, ShieldAlert, Download, Loader2, Clock, Plus, Trash2, Edit2, Save, X, CheckCircle2, QrCode, Upload, ImageOff } from "lucide-react";
+import { Zap, Globe, ShieldAlert, Download, Loader2, Clock, Plus, Trash2, Edit2, Save, X, CheckCircle2, QrCode, Upload, ImageOff, Cloud, CloudUpload, Database, RefreshCw, HardDrive } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/api/adminApi";
 import { deliverySlotApi, DeliverySlot } from "@/api/deliverySlotApi";
@@ -52,6 +52,109 @@ const Settings = () => {
   
   const [restoring, setRestoring] = useState(false);
   const restoreFileRef = useRef<HTMLInputElement>(null);
+
+  // S3 Cloud Backups State
+  const [s3Backups, setS3Backups] = useState<any[]>([]);
+  const [loadingS3Backups, setLoadingS3Backups] = useState(false);
+  const [creatingS3Backup, setCreatingS3Backup] = useState(false);
+  const [restoringS3Key, setRestoringS3Key] = useState<string | null>(null);
+  const [deletingS3Key, setDeletingS3Key] = useState<string | null>(null);
+  const [downloadingZip, setDownloadingZip] = useState(false);
+
+  useEffect(() => {
+    fetchSettings();
+    fetchS3Backups();
+  }, []);
+
+  const handleDownloadAllS3ImagesZip = async () => {
+    setDownloadingZip(true);
+    try {
+      toast.info("Downloading all S3 images into ZIP archive... Please wait.");
+      const blob = await adminApi.downloadAllS3ImagesZip();
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `grocmed_all_s3_images_${new Date().toISOString().slice(0, 10)}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("S3 Media ZIP downloaded successfully!");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Failed to download S3 images zip");
+    } finally {
+      setDownloadingZip(false);
+    }
+  };
+
+  const fetchS3Backups = async () => {
+    setLoadingS3Backups(true);
+    try {
+      const res = await adminApi.listS3Backups();
+      if (res.success && Array.isArray(res.data)) {
+        setS3Backups(res.data);
+      }
+    } catch (err: any) {
+      console.warn("Failed to fetch S3 backups:", err);
+    } finally {
+      setLoadingS3Backups(false);
+    }
+  };
+
+  const handleCreateS3Backup = async () => {
+    setCreatingS3Backup(true);
+    try {
+      const res = await adminApi.createS3Backup();
+      if (res.success) {
+        toast.success(res.message || "S3 Database backup created successfully!");
+        fetchS3Backups();
+      } else {
+        toast.error(res.message || "Failed to create S3 backup");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Error creating S3 backup");
+    } finally {
+      setCreatingS3Backup(false);
+    }
+  };
+
+  const handleRestoreS3Backup = async (key: string) => {
+    if (!window.confirm("WARNING: Restoring from this S3 backup will overwrite all current MongoDB collections. Do you want to proceed?")) {
+      return;
+    }
+    setRestoringS3Key(key);
+    try {
+      const res = await adminApi.restoreS3Backup(key);
+      if (res.success) {
+        toast.success(res.message || "Database restored from S3 successfully!");
+      } else {
+        toast.error(res.message || "Failed to restore from S3");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Error restoring S3 backup");
+    } finally {
+      setRestoringS3Key(null);
+    }
+  };
+
+  const handleDeleteS3Backup = async (key: string) => {
+    if (!window.confirm("Are you sure you want to delete this S3 backup file?")) {
+      return;
+    }
+    setDeletingS3Key(key);
+    try {
+      const res = await adminApi.deleteS3Backup(key);
+      if (res.success) {
+        toast.success(res.message || "S3 Backup file deleted");
+        fetchS3Backups();
+      } else {
+        toast.error(res.message || "Failed to delete S3 backup");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Error deleting S3 backup");
+    } finally {
+      setDeletingS3Key(null);
+    }
+  };
   
   const [securityModal, setSecurityModal] = useState({
     isOpen: false,
@@ -609,6 +712,141 @@ const Settings = () => {
                   Restore Database (JSON)
                 </Button>
               </div>
+            </div>
+          </Card>
+
+          {/* AWS S3 Cloud Database Backup Card */}
+          <Card className="p-6 sm:p-8 border-none shadow-sm rounded-3xl bg-indigo-50/40 ring-1 ring-indigo-100/60 overflow-hidden relative mt-8 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-indigo-100">
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-indigo-950 tracking-tight flex items-center gap-2">
+                  <Cloud className="w-5 h-5 text-indigo-600" />
+                  AWS S3 Cloud Database Backup & Automated Recovery
+                </h3>
+                <p className="text-xs text-indigo-600/80 font-normal">
+                  Automated background snapshots uploaded directly to your secure Amazon S3 Bucket (<code className="font-mono bg-indigo-100/80 px-1.5 py-0.5 rounded text-[11px]">backups/db/</code>).
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadAllS3ImagesZip}
+                  disabled={downloadingZip}
+                  className="h-10 px-4 rounded-xl bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-semibold"
+                >
+                  {downloadingZip ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5 mr-1.5 text-indigo-600" />
+                  )}
+                  Download All S3 Media (.zip)
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchS3Backups}
+                  disabled={loadingS3Backups}
+                  className="h-10 px-4 rounded-xl bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-semibold"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loadingS3Backups ? "animate-spin" : ""}`} />
+                  Refresh
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={handleCreateS3Backup}
+                  disabled={creatingS3Backup}
+                  className="h-10 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20"
+                >
+                  {creatingS3Backup ? (
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <CloudUpload className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  Create Instant S3 Backup
+                </Button>
+              </div>
+            </div>
+
+            {/* S3 Backups History Table */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-2">
+                <Database className="w-4 h-4 text-indigo-600" />
+                Available Cloud Backups ({s3Backups.length})
+              </h4>
+
+              {loadingS3Backups ? (
+                <div className="py-8 flex items-center justify-center gap-2 text-indigo-500 text-sm">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Fetching S3 backups...
+                </div>
+              ) : s3Backups.length === 0 ? (
+                <div className="p-6 bg-white/70 rounded-2xl text-center border border-indigo-100">
+                  <HardDrive className="w-8 h-8 text-indigo-300 mx-auto mb-2" />
+                  <p className="text-xs font-medium text-indigo-900">No S3 database backups found yet.</p>
+                  <p className="text-[11px] text-indigo-500 mt-0.5">Click "Create Instant S3 Backup" above to trigger your first cloud snapshot.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-2xl border border-indigo-100 bg-white">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-indigo-50/70 text-indigo-900 font-bold uppercase tracking-wider text-[10px]">
+                      <tr>
+                        <th className="px-4 py-3">Filename / S3 Key</th>
+                        <th className="px-4 py-3">Backup Date</th>
+                        <th className="px-4 py-3">Size</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-indigo-50 text-indigo-950">
+                      {s3Backups.map((item) => (
+                        <tr key={item.key} className="hover:bg-indigo-50/40 transition-colors">
+                          <td className="px-4 py-3 font-mono font-medium text-[11px] text-indigo-900">
+                            {item.key.replace("backups/db/", "")}
+                          </td>
+                          <td className="px-4 py-3 text-[11px]">
+                            {new Date(item.lastModified).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-3 text-[11px] font-semibold text-indigo-700">
+                            {(item.size / (1024 * 1024)).toFixed(2)} MB
+                          </td>
+                          <td className="px-4 py-3 text-right space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRestoreS3Backup(item.key)}
+                              disabled={restoringS3Key === item.key}
+                              className="h-8 px-3 rounded-lg text-[10px] font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-100"
+                            >
+                              {restoringS3Key === item.key ? (
+                                <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                              ) : (
+                                <RefreshCw className="w-3 h-3 mr-1" />
+                              )}
+                              Restore
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteS3Backup(item.key)}
+                              disabled={deletingS3Key === item.key}
+                              className="h-8 px-2.5 rounded-lg text-[10px] text-red-600 hover:bg-red-50"
+                            >
+                              {deletingS3Key === item.key ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                              )}
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </Card>
 

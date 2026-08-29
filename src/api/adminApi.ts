@@ -80,6 +80,27 @@ export const adminApi = {
         const response = await axiosInstance.post("/api/admin/backup/restore", backupData);
         return response.data;
     },
+    // S3 Cloud Backup Management
+    createS3Backup: async () => {
+        const response = await axiosInstance.post("/api/admin/backup/s3/create");
+        return response.data;
+    },
+    listS3Backups: async () => {
+        const response = await axiosInstance.get("/api/admin/backup/s3/list");
+        return response.data;
+    },
+    restoreS3Backup: async (s3Key: string) => {
+        const response = await axiosInstance.post("/api/admin/backup/s3/restore", { s3Key });
+        return response.data;
+    },
+    deleteS3Backup: async (s3Key: string) => {
+        const response = await axiosInstance.delete("/api/admin/backup/s3/delete", { data: { s3Key } });
+        return response.data;
+    },
+    downloadAllS3ImagesZip: async () => {
+        const response = await axiosInstance.get("/api/admin/backup/s3/images-zip", { responseType: 'blob' });
+        return response.data;
+    },
     // Pincode Management
     getAllPincodes: async (params?: { limit?: number; search?: string }) => {
         const response = await axiosInstance.get("/api/admin/pincodes", { params });
