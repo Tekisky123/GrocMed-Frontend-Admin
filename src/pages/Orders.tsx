@@ -120,10 +120,12 @@ const Orders = () => {
 
   // Filter orders locally
   const filteredOrders = useMemo(() => {
-    return allOrders.filter((order: Order) => {
-      const matchesStatus = !statusFilter || order.orderStatus === statusFilter;
-      return matchesStatus;
-    });
+    return [...allOrders]
+      .sort((a: Order, b: Order) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .filter((order: Order) => {
+        const matchesStatus = !statusFilter || order.orderStatus === statusFilter;
+        return matchesStatus;
+      });
   }, [allOrders, statusFilter]);
 
   // Paginated orders
@@ -340,15 +342,19 @@ const Orders = () => {
                       <p className="text-sm font-mono font-semibold text-gray-900">#{order._id.slice(-8).toUpperCase()}</p>
                       <p className="text-[10px] text-gray-400 font-normal mt-0.5">{safeFormatDate(order.createdAt, 'hh:mm a')}</p>
                     </td>
-                    <td className="px-6 py-5">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{order.customer?.shopName || "No Shop Name"}</p>
-                        <p className="text-[11px] font-bold text-indigo-600 mt-0.5">{order.customer?.name || "Unknown Customer"}</p>
-                        <p className="text-[10px] text-gray-400 font-normal mt-0.5">{order.customer?.phone || "N/A"}</p>
+                    <td className="px-6 py-5 max-w-[200px]">
+                      <div className="space-y-0.5 overflow-hidden">
+                        <p className="text-sm font-semibold text-gray-900 truncate" title={order.customer?.shopName || "No Shop Name"}>
+                          {order.customer?.shopName || "No Shop Name"}
+                        </p>
+                        <p className="text-[11px] font-bold text-indigo-600 truncate" title={order.customer?.name || "Unknown Customer"}>
+                          {order.customer?.name || "Unknown Customer"}
+                        </p>
+                        <p className="text-[10px] text-gray-400 font-normal truncate">{order.customer?.phone || "N/A"}</p>
                         {order.deliveryPartner && (
-                          <p className="text-[10px] text-primary font-bold mt-1 inline-flex items-center gap-1">
-                            <Truck className="w-2.5 h-2.5" />
-                            {order.deliveryPartner.name || "N/A"}
+                          <p className="text-[10px] text-primary font-bold mt-0.5 inline-flex items-center gap-1 truncate" title={order.deliveryPartner.name || "N/A"}>
+                            <Truck className="w-2.5 h-2.5 flex-shrink-0" />
+                            <span className="truncate">{order.deliveryPartner.name || "N/A"}</span>
                           </p>
                         )}
                       </div>
@@ -820,7 +826,20 @@ const Orders = () => {
 
                         {/* Product Details */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
+                          <p className="text-sm font-semibold text-gray-900 truncate" title={item.name}>{item.name}</p>
+                          
+                          {/* Pack / Unit Info Badge */}
+                          {(() => {
+                            const packLabel = (item as any).packagingLabel || (item as any).unit || (item.product as any)?.perUnitWeightVolume || (item.product as any)?.unit || (item.product as any)?.unitType;
+                            return packLabel ? (
+                              <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md inline-block">
+                                  Pack / Unit: {packLabel}
+                                </span>
+                              </div>
+                            ) : null;
+                          })()}
+
                           <div className="flex items-center gap-3 mt-1">
                             <span className="text-xs font-normal text-gray-500">Qty: {item.quantity}</span>
                             <span className="text-xs font-normal text-gray-400">•</span>

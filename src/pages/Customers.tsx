@@ -26,10 +26,12 @@ import {
   Calendar,
   Package,
   FileText,
+  Download,
 } from "lucide-react";
 import { customerApi, Customer } from "@/api/customerApi";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { exportToCSV } from "@/utils/exportUtils";
 
 const Customers = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,6 +42,8 @@ const Customers = () => {
   const itemsPerPage = 10;
   const queryClient = useQueryClient();
 
+  const [exportingReport, setExportingReport] = useState(false);
+
   // Fetch all customers
   const { data: customersResponse, isLoading } = useQuery({
     queryKey: ['customers'],
@@ -48,10 +52,63 @@ const Customers = () => {
 
   const allCustomers = customersResponse?.data || [];
 
-  // Filter customers locally
+  // Filter & sort customers locally (Newest first)
   const filteredCustomers = useMemo(() => {
-    return allCustomers;
+    return [...allCustomers].sort(
+      (a: Customer, b: Customer) =>
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
   }, [allCustomers]);
+
+  const handleDownloadCustomerReport = async () => {
+    try {
+      setExportingReport(true);
+      toast.loading("Preparing full customer report...", { id: "cust-export" });
+
+      const reportRows = await Promise.all(
+        filteredCustomers.map(async (c: Customer) => {
+          let orderCount = 0;
+          let totalSpent = 0;
+          try {
+            const res = await customerApi.getCustomerById(c._id);
+            if (res?.data) {
+              orderCount = res.data.orderCount || 0;
+              totalSpent = res.data.totalSpent || 0;
+            }
+          } catch (_) {}
+
+          const defaultAddr = c.addresses?.find((a: any) => a.isDefault) || c.addresses?.[0];
+          const addressString = defaultAddr
+            ? `${defaultAddr.street || ''}, ${defaultAddr.city || ''}, ${defaultAddr.state || ''} - ${defaultAddr.zip || ''}`
+            : 'N/A';
+
+          return {
+            "Customer ID": c._id,
+            "Shop Name": c.shopName || "N/A",
+            "Customer Name": c.name || "N/A",
+            "Phone Number": c.phone || "N/A",
+            "Email Address": c.email || "N/A",
+            "Account Status": c.isActive ? "Active" : "Inactive",
+            "Aadhaar Number": c.adhaar || "N/A",
+            "Shop License / GST": c.licenseNumber || "N/A",
+            "Primary Address": addressString,
+            "Pincode": defaultAddr?.zip || "N/A",
+            "Total Saved Addresses": c.addresses?.length || 0,
+            "Total Orders": orderCount,
+            "Total Spent (INR)": totalSpent,
+            "Registration Date": c.createdAt ? format(new Date(c.createdAt), 'dd/MM/yyyy hh:mm a') : "N/A",
+          };
+        })
+      );
+
+      exportToCSV(reportRows, `GrocMed_Customers_Report_${new Date().toISOString().slice(0, 10)}`);
+      toast.success(`Customer report exported successfully (${reportRows.length} records)!`, { id: "cust-export" });
+    } catch (err) {
+      toast.error("Failed to export customer report", { id: "cust-export" });
+    } finally {
+      setExportingReport(false);
+    }
+  };
 
   // Paginated customers
   const paginatedCustomers = useMemo(() => {
@@ -100,13 +157,26 @@ const Customers = () => {
           <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">Customers</h1>
           <p className="text-sm sm:text-base text-gray-500 font-normal mt-1">View and manage your customer database.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Badge variant="outline" className="px-3 py-1 rounded-full border-blue-200 bg-blue-50 text-blue-700 font-normal">
             {filteredCustomers.length} Total
           </Badge>
           <Badge variant="outline" className="px-3 py-1 rounded-full border-green-200 bg-green-50 text-green-700 font-normal">
             {allCustomers.filter((c: Customer) => c.isActive).length} Active
           </Badge>
+          <Button
+            variant="outline"
+            onClick={handleDownloadCustomerReport}
+            disabled={exportingReport || filteredCustomers.length === 0}
+            className="h-11 px-5 rounded-2xl border-blue-200 text-blue-700 gap-2 font-normal text-xs uppercase tracking-widest bg-white shadow-sm hover:bg-blue-50 disabled:opacity-50"
+          >
+            {exportingReport ? (
+              <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 text-blue-600" />
+            )}
+            Download Report
+          </Button>
         </div>
       </div>
 
@@ -156,21 +226,20 @@ const Customers = () => {
                 <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Contact</th>
                 <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Addresses</th>
                 <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Joined</th>
-                <th className="px-6 py-5 text-left text-[11px] font-normal text-gray-400 uppercase tracking-widest">Status</th>
                 <th className="px-6 py-5 text-right text-[11px] font-normal text-gray-400 uppercase tracking-widest">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="py-24 text-center">
+                  <td colSpan={5} className="py-24 text-center">
                     <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto" />
                     <p className="text-sm font-normal text-blue-600 mt-6 tracking-widest uppercase">Loading Customers...</p>
                   </td>
                 </tr>
               ) : paginatedCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-20 text-center text-gray-400 font-normal uppercase text-xs tracking-widest">
+                  <td colSpan={5} className="py-20 text-center text-gray-400 font-normal uppercase text-xs tracking-widest">
                     No customers found
                   </td>
                 </tr>
@@ -213,26 +282,6 @@ const Customers = () => {
                           {format(new Date(customer.createdAt), 'dd/MM/yyyy')}
                         </span>
                       </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <Badge
-                        className={`px-3 py-1.5 rounded-lg font-semibold text-[10px] uppercase tracking-wider border inline-flex items-center gap-1.5 ${customer.isActive
-                          ? 'bg-green-50 text-green-700 border-green-200'
-                          : 'bg-gray-50 text-gray-600 border-gray-200'
-                          }`}
-                      >
-                        {customer.isActive ? (
-                          <>
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Active
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="w-3.5 h-3.5" />
-                            Inactive
-                          </>
-                        )}
-                      </Badge>
                     </td>
                     <td className="px-6 py-5 text-right">
                       <div className="flex items-center justify-end gap-2">

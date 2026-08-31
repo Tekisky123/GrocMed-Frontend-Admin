@@ -38,12 +38,16 @@ export default function Coupons() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Delete Modal State
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [couponToDelete, setCouponToDelete] = useState<CouponData | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Form State
   const [formData, setFormData] = useState({
     code: "",
-    discountPercentage: "20",
+    discountAmount: "50",
     minOrderAmount: "0",
-    maxDiscountAmount: "",
     validFrom: new Date().toISOString().split("T")[0],
     validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       .toISOString()
@@ -92,11 +96,8 @@ export default function Coupons() {
       setSubmitting(true);
       const payload = {
         code: formData.code.trim().toUpperCase(),
-        discountPercentage: Number(formData.discountPercentage),
+        discountAmount: Number(formData.discountAmount),
         minOrderAmount: Number(formData.minOrderAmount || 0),
-        maxDiscountAmount: formData.maxDiscountAmount
-          ? Number(formData.maxDiscountAmount)
-          : null,
         validFrom: new Date(formData.validFrom).toISOString(),
         validUntil: new Date(formData.validUntil).toISOString(),
         usageLimit: Number(formData.usageLimit || 100),
@@ -144,16 +145,23 @@ export default function Coupons() {
     }
   };
 
-  const handleDelete = async (id: string, code: string) => {
-    if (!confirm(`Are you sure you want to delete coupon "${code}"?`)) return;
+  const openDeleteModal = (coupon: CouponData) => {
+    setCouponToDelete(coupon);
+    setShowDeleteModal(true);
+  };
 
+  const confirmDeleteCoupon = async () => {
+    if (!couponToDelete || !couponToDelete._id) return;
     try {
-      const res = await couponApi.deleteCoupon(id);
+      setDeleting(true);
+      const res = await couponApi.deleteCoupon(couponToDelete._id);
       if (res.success) {
         toast({
           title: "Deleted",
-          description: `Coupon ${code} deleted`,
+          description: `Coupon "${couponToDelete.code}" deleted successfully`,
         });
+        setShowDeleteModal(false);
+        setCouponToDelete(null);
         fetchCoupons();
       }
     } catch (err: any) {
@@ -162,15 +170,16 @@ export default function Coupons() {
         description: err.response?.data?.message || "Failed to delete coupon",
         variant: "destructive",
       });
+    } finally {
+      setDeleting(false);
     }
   };
 
   const resetForm = () => {
     setFormData({
       code: "",
-      discountPercentage: "20",
+      discountAmount: "50",
       minOrderAmount: "0",
-      maxDiscountAmount: "",
       validFrom: new Date().toISOString().split("T")[0],
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
         .toISOString()
@@ -212,7 +221,7 @@ export default function Coupons() {
   const totalRedeemed = coupons.reduce((sum, c) => sum + (c.usedCount || 0), 0);
   const avgDiscount = coupons.length
     ? Math.round(
-        coupons.reduce((sum, c) => sum + c.discountPercentage, 0) / coupons.length
+        coupons.reduce((sum, c) => sum + (c.discountAmount || 0), 0) / coupons.length
       )
     : 0;
 
@@ -289,7 +298,7 @@ export default function Coupons() {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
               Avg Discount
             </p>
-            <p className="text-2xl font-black text-gray-900">{avgDiscount}% OFF</p>
+            <p className="text-2xl font-black text-gray-900">₹{avgDiscount} OFF</p>
           </div>
         </div>
       </div>
@@ -378,7 +387,7 @@ export default function Coupons() {
                       {/* Offer */}
                       <td className="py-4 px-5 align-middle">
                         <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200/80 font-black text-xs px-2.5 py-1">
-                          {c.discountPercentage}% OFF
+                          ₹{c.discountAmount} OFF
                         </Badge>
                       </td>
 
@@ -468,7 +477,7 @@ export default function Coupons() {
                             <Power className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(c._id!, c.code)}
+                            onClick={() => openDeleteModal(c)}
                             className="p-2 rounded-lg border border-red-100 bg-red-50 text-red-600 hover:bg-red-100 transition-all"
                             title="Delete Coupon"
                           >
@@ -528,30 +537,29 @@ export default function Coupons() {
               />
             </div>
 
-            {/* Offer % & Min Order */}
+            {/* Offer Price & Min Order */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="discountPercentage" className="text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Discount (% OFF) *
+                <Label htmlFor="discountAmount" className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Discount Amount (₹ OFF) *
                 </Label>
                 <div className="relative">
                   <Input
-                    id="discountPercentage"
+                    id="discountAmount"
                     type="number"
                     min="1"
-                    max="100"
-                    placeholder="20"
-                    value={formData.discountPercentage}
+                    placeholder="50"
+                    value={formData.discountAmount}
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        discountPercentage: e.target.value,
+                        discountAmount: e.target.value,
                       }))
                     }
                     className="pr-8 rounded-xl font-bold border-gray-200"
                     required
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">%</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₹</span>
                 </div>
               </div>
 
@@ -692,6 +700,44 @@ export default function Coupons() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="sm:max-w-[420px] rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg text-red-600 font-bold">
+              <Trash2 className="w-5 h-5 text-red-600" />
+              Delete Coupon?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 pt-1">
+              Are you sure you want to delete coupon{" "}
+              <span className="font-mono font-bold text-gray-900 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                {couponToDelete?.code}
+              </span>
+              ? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="pt-4 flex flex-row gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={deleting}
+              className="rounded-xl flex-1 border-gray-200"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmDeleteCoupon}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl flex-1 shadow-md shadow-red-600/20"
+            >
+              {deleting ? "Deleting..." : "Delete Coupon"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
