@@ -174,11 +174,11 @@ const Settings = () => {
       const res = await adminApi.getSettings();
       if (res.success && res.data) {
         setSettings({
-          deliveryCharge: res.data.deliveryCharge || 30.00,
-          minOrderValue: res.data.minOrderValue || 1000.00,
-          freeDeliveryThreshold: res.data.freeDeliveryThreshold || 1500.00,
-          maxOrdersPerDay: res.data.maxOrdersPerDay || 50,
-          maxOrdersPerSlot: res.data.maxOrdersPerSlot || 20,
+          deliveryCharge: res.data.deliveryCharge ?? 30.00,
+          minOrderValue: res.data.minOrderValue ?? 1000.00,
+          freeDeliveryThreshold: res.data.freeDeliveryThreshold ?? 1500.00,
+          maxOrdersPerDay: res.data.maxOrdersPerDay ?? 50,
+          maxOrdersPerSlot: res.data.maxOrdersPerSlot ?? 20,
           paymentQrUrl: res.data.paymentQrUrl || null,
         });
         if (res.data.storeTimings) {
@@ -576,7 +576,7 @@ const Settings = () => {
                       type="number"
                       min="0"
                       value={settings.deliveryCharge}
-                      onChange={(e) => handleSettingChange("deliveryCharge", Math.max(0, parseInt(e.target.value) || 0))}
+                      onChange={(e) => handleSettingChange("deliveryCharge", Math.max(0, parseFloat(e.target.value) || 0))}
                       className="h-12 pl-10 rounded-2xl border-gray-100 bg-gray-50/50 focus:bg-white transition-all font-normal"
                     />
                   </div>

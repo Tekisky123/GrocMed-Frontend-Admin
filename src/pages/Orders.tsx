@@ -828,23 +828,66 @@ const Orders = () => {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-900 truncate" title={item.name}>{item.name}</p>
                           
-                          {/* Pack / Unit Info Badge */}
+                          {/* Pack / Unit & Detailed Quantity Breakdown */}
                           {(() => {
-                            const packLabel = (item as any).packagingLabel || (item as any).unit || (item.product as any)?.perUnitWeightVolume || (item.product as any)?.unit || (item.product as any)?.unitType;
-                            return packLabel ? (
-                              <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-md inline-block">
-                                  Pack / Unit: {packLabel}
-                                </span>
-                              </div>
-                            ) : null;
-                          })()}
+                            const prod = (item.product as any) || {};
+                            const matchingOpt = prod.packagingOptions?.find(
+                              (opt: any) => String(opt._id) === String((item as any).packagingOptionId) || opt.id === (item as any).packagingOptionId
+                            );
 
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs font-normal text-gray-500">Qty: {item.quantity}</span>
-                            <span className="text-xs font-normal text-gray-400">•</span>
-                            <span className="text-xs font-semibold text-gray-700">₹{item.price.toLocaleString()} each</span>
-                          </div>
+                            const packLabel = matchingOpt?.label || (item as any).packagingLabel || prod.unitType || '';
+                            const weightVolume = prod.perUnitWeightVolume || (item as any).unit || '';
+                            const unitsPerPack = matchingOpt?.unitsPerPack || (item as any).unitsPerPack || prod.unitsPerUnitType || prod.unitsPerPack || 1;
+                            const totalItems = item.quantity * unitsPerPack;
+                            
+                            // Determine clear unit name e.g. "Box", "Pack", "Strip", "Carton", "Jar", "Bottle"
+                            let unitTypeName = prod.unitType;
+                            if (!unitTypeName) {
+                              const lowerLabel = packLabel.toLowerCase();
+                              if (lowerLabel.includes('box')) unitTypeName = 'Box';
+                              else if (lowerLabel.includes('strip')) unitTypeName = 'Strip';
+                              else if (lowerLabel.includes('carton')) unitTypeName = 'Carton';
+                              else if (lowerLabel.includes('jar')) unitTypeName = 'Jar';
+                              else if (lowerLabel.includes('bottle')) unitTypeName = 'Bottle';
+                              else unitTypeName = 'Pack';
+                            }
+                            const pluralUnit = item.quantity === 1 ? unitTypeName : `${unitTypeName}s`;
+
+                            return (
+                              <div className="mt-1.5 space-y-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {/* Packaging Option Purchased */}
+                                  {packLabel ? (
+                                    <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-md inline-flex items-center gap-1">
+                                      <span className="text-indigo-400 font-normal">Packaging Option:</span> {packLabel}
+                                    </span>
+                                  ) : null}
+
+                                  {/* Net Weight / Volume per unit */}
+                                  {weightVolume && weightVolume !== packLabel ? (
+                                    <span className="text-[11px] font-semibold text-gray-700 bg-gray-100 border border-gray-200 px-2.5 py-0.5 rounded-md inline-block">
+                                      Net Wt/Vol: {weightVolume}
+                                    </span>
+                                  ) : null}
+                                </div>
+
+                                {/* Multi-Item Box/Pack Detailed Calculation */}
+                                {unitsPerPack > 1 ? (
+                                  <div className="text-[11px] font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-300/80 px-2.5 py-1 rounded-lg inline-block shadow-sm">
+                                    📦 {unitsPerPack} items in 1 {unitTypeName} — Total: <span className="underline decoration-emerald-500 font-black">{totalItems} total items</span> ({item.quantity} {pluralUnit} × {unitsPerPack} items/{unitTypeName})
+                                  </div>
+                                ) : null}
+
+                                <div className="flex items-center gap-3 pt-0.5">
+                                  <span className="text-xs font-bold text-gray-900">
+                                    Ordered Qty: {item.quantity} {pluralUnit}
+                                  </span>
+                                  <span className="text-xs font-normal text-gray-400">•</span>
+                                  <span className="text-xs font-semibold text-gray-700">₹{item.price.toLocaleString()} per {unitTypeName.toLowerCase()}</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Item Total */}
