@@ -557,7 +557,8 @@ const DeliveryPartners = () => {
                             <div key={ord._id} className="p-4 bg-white hover:bg-amber-50/20 transition-colors flex items-center justify-between gap-4">
                               <div>
                                 <p className="text-xs font-mono font-bold text-gray-900">#{ord._id.slice(-8).toUpperCase()}</p>
-                                <p className="text-xs font-bold text-gray-700 mt-0.5">{ord.customer?.shopName || ord.customer?.name || "Customer"}</p>
+                                <p className="text-xs font-bold text-gray-900 mt-0.5">{ord.customer?.shopName || "No Shop Name"}</p>
+                                {ord.customer?.name && <p className="text-[11px] font-semibold text-indigo-600">{ord.customer.name}</p>}
                                 <p className="text-[10px] text-gray-400 mt-0.5">Slot: {ord.deliverySlot || "Standard"} ({formatDateDDMMYYYY(ord.createdAt)})</p>
                               </div>
                               <div className="text-right">
@@ -585,7 +586,8 @@ const DeliveryPartners = () => {
                             <div key={ord._id} className="p-4 bg-white hover:bg-green-50/20 transition-colors flex items-center justify-between gap-4">
                               <div>
                                 <p className="text-xs font-mono font-bold text-gray-900">#{ord._id.slice(-8).toUpperCase()}</p>
-                                <p className="text-xs font-bold text-gray-700 mt-0.5">{ord.customer?.shopName || ord.customer?.name || "Customer"}</p>
+                                <p className="text-xs font-bold text-gray-900 mt-0.5">{ord.customer?.shopName || "No Shop Name"}</p>
+                                {ord.customer?.name && <p className="text-[11px] font-semibold text-indigo-600">{ord.customer.name}</p>}
                                 <p className="text-[10px] text-green-600 font-bold mt-0.5">
                                   Delivered: {formatDateDDMMYYYY(ord.updatedAt || ord.createdAt)}
                                 </p>

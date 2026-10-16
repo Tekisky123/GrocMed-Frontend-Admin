@@ -24,6 +24,12 @@ export const customerApi = {
         const response = await axiosInstance.delete(`/api/customer/deleteCustomer/${id}`);
         return response.data;
     },
+
+    // Admin update customer password
+    updateCustomerPassword: async (id: string, password: string) => {
+        const response = await axiosInstance.put(`/api/customer/admin/updateCustomerPassword/${id}`, { password });
+        return response.data;
+    },
 };
 
 // Type definitions for customers

@@ -36,6 +36,7 @@ import {
   Truck,
   Download,
   Ticket,
+  Store,
 } from "lucide-react";
 import { orderApi, Order } from "@/api/orderApi";
 import { deliveryPartnerApi } from "@/api/deliveryPartnerApi";
@@ -618,8 +619,12 @@ const Orders = () => {
                 <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Customer Information</h4>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
-                    <User className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm font-semibold text-gray-900">{selectedOrder.customer?.name || "Unknown Customer"}</span>
+                    <Store className="w-4 h-4 text-primary flex-shrink-0" />
+                    <span className="text-sm font-bold text-gray-900">{selectedOrder.customer?.shopName || "No Shop Name"}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-indigo-600">Customer: {selectedOrder.customer?.name || "Unknown Customer"}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <Phone className="w-4 h-4 text-gray-400" />

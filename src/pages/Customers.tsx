@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -27,6 +28,10 @@ import {
   Package,
   FileText,
   Download,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Store,
 } from "lucide-react";
 import { customerApi, Customer } from "@/api/customerApi";
 import { toast } from "sonner";
@@ -38,6 +43,10 @@ const Customers = () => {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [customerForPasswordReset, setCustomerForPasswordReset] = useState<Customer | null>(null);
+  const [newCustomerPassword, setNewCustomerPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const queryClient = useQueryClient();
@@ -131,6 +140,31 @@ const Customers = () => {
       toast.error(error.response?.data?.message || "Failed to delete customer");
     },
   });
+
+  // Admin update customer password
+  const handleAdminUpdatePassword = async () => {
+    if (!customerForPasswordReset) return;
+    if (!newCustomerPassword || newCustomerPassword.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return;
+    }
+
+    setUpdatingPassword(true);
+    try {
+      const res = await customerApi.updateCustomerPassword(customerForPasswordReset._id, newCustomerPassword);
+      if (res.success) {
+        toast.success(res.message || "Customer password updated successfully!");
+        setCustomerForPasswordReset(null);
+        setNewCustomerPassword("");
+      } else {
+        toast.error(res.message || "Failed to update password");
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to update customer password");
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
 
   const handleSearch = async () => {
     if (searchQuery.trim()) {
@@ -288,6 +322,20 @@ const Customers = () => {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => {
+                            setCustomerForPasswordReset(customer);
+                            setNewCustomerPassword("");
+                            setShowNewPassword(false);
+                          }}
+                          className="h-9 px-3 rounded-xl font-normal text-xs uppercase text-amber-600 hover:bg-amber-50"
+                          title="Reset / Update Customer Password"
+                        >
+                          <KeyRound className="w-3.5 h-3.5 mr-1" />
+                          Password
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setSelectedCustomer(customer)}
                           className="h-9 px-4 rounded-xl font-normal text-xs uppercase text-blue-600 hover:bg-blue-50"
                         >
@@ -401,16 +449,97 @@ const Customers = () => {
       {selectedCustomer && (
         <Dialog open={!!selectedCustomer} onOpenChange={() => setSelectedCustomer(null)}>
           <DialogContent className="max-w-4xl rounded-[32px] p-0 border-none shadow-2xl max-h-[90vh] overflow-y-auto">
-            <CustomerDetailsModal customerId={selectedCustomer._id} onClose={() => setSelectedCustomer(null)} />
+            <CustomerDetailsModal
+              customerId={selectedCustomer._id}
+              onClose={() => setSelectedCustomer(null)}
+              onOpenResetPassword={(cust) => {
+                setCustomerForPasswordReset(cust);
+                setNewCustomerPassword("");
+                setShowNewPassword(false);
+              }}
+            />
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Admin Update Customer Password Modal */}
+      <Dialog open={!!customerForPasswordReset} onOpenChange={(open) => !open && setCustomerForPasswordReset(null)}>
+        <DialogContent className="sm:max-w-[460px] p-6 rounded-3xl bg-white border border-gray-100 shadow-xl">
+          <DialogHeader className="text-left pb-3 border-b border-gray-100">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-900">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+                <KeyRound className="w-5 h-5 text-amber-600" />
+              </div>
+              Update Customer Password
+            </DialogTitle>
+            <DialogDescription className="text-xs text-gray-500 mt-1">
+              Set a new password for <span className="font-semibold text-gray-800">{customerForPasswordReset?.name || 'Customer'}</span> ({customerForPasswordReset?.phone}).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                New Password *
+              </label>
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="Enter new password (min 6 characters)"
+                  value={newCustomerPassword}
+                  onChange={(e) => setNewCustomerPassword(e.target.value)}
+                  className="pr-10 h-12 rounded-xl text-sm"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-amber-50/70 border border-amber-200/60 rounded-2xl p-3.5 text-xs text-amber-900 leading-relaxed">
+              <p className="font-semibold mb-0.5">Administrator Override</p>
+              Updating this password will take effect immediately. It will also unblock and reset any locked OTP attempts for this customer.
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setCustomerForPasswordReset(null)}
+              disabled={updatingPassword}
+              className="rounded-xl h-11 text-xs uppercase font-medium"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAdminUpdatePassword}
+              disabled={updatingPassword || newCustomerPassword.length < 6}
+              className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl h-11 text-xs uppercase font-bold"
+            >
+              {updatingPassword ? "Updating..." : "Save Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 // Customer Details Modal Component
-const CustomerDetailsModal = ({ customerId, onClose }: { customerId: string; onClose: () => void }) => {
+const CustomerDetailsModal = ({
+  customerId,
+  onClose,
+  onOpenResetPassword,
+}: {
+  customerId: string;
+  onClose: () => void;
+  onOpenResetPassword?: (customer: Customer) => void;
+}) => {
   const { data: customerDetailsResponse, isLoading } = useQuery({
     queryKey: ['customer-details', customerId],
     queryFn: () => customerApi.getCustomerById(customerId),
@@ -468,8 +597,12 @@ const CustomerDetailsModal = ({ customerId, onClose }: { customerId: string; onC
           <h4 className="text-xs font-black text-gray-900 uppercase tracking-widest mb-4">Personal Information</h4>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <User className="w-4 h-4 text-gray-400" />
-              <span className="text-sm font-semibold text-gray-900">{customer?.name || "Unknown Customer"}</span>
+              <Store className="w-4 h-4 text-primary flex-shrink-0" />
+              <span className="text-sm font-bold text-gray-900">{customer?.shopName || "No Shop Name"}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <span className="text-xs font-semibold text-indigo-600">Contact: {customer?.name || "Unknown Customer"}</span>
             </div>
             <div className="flex items-center gap-3">
               <Mail className="w-4 h-4 text-gray-400" />
@@ -495,6 +628,24 @@ const CustomerDetailsModal = ({ customerId, onClose }: { customerId: string; onC
                 {customer.isActive ? 'Active Account' : 'Inactive Account'}
               </span>
             </div>
+
+            {onOpenResetPassword && (
+              <div className="pt-3 border-t border-blue-100 flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    onClose();
+                    onOpenResetPassword(customer);
+                  }}
+                  className="h-9 px-3.5 rounded-xl text-xs font-semibold text-amber-600 border-amber-200 hover:bg-amber-50"
+                >
+                  <KeyRound className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
+                  Reset Customer Password
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
